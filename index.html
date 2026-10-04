@@ -3,24 +3,55 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Snake</title>
+<title>Pocket Snake</title>
 <style>
-  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; color: #eee; font-family: sans-serif; }
-  canvas { background: #1b1b1b; border: 2px solid #444; max-width: 95vw; }
-  #score { margin: 12px 0; font-size: 20px; }
-  p { color: #888; font-size: 14px; }
+  /* Layout: one centered play column, score above, board below, hint underneath. Single dark arcade look by choice. */
+  :root {
+    --bg: #0e1411;
+    --board: #151d18;
+    --line: #2a372f;
+    --fg: #e4efe7;
+    --muted: #8da093;
+    --snake: #5fd38a;
+    --snake-head: #a6f2c2;
+    --food: #ff6b4a;
+    --font-display: "Press Start 2P", "Courier New", monospace;
+    --font-body: "DM Sans", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-body); padding-inline: 16px; padding-block: 24px; display: flex; flex-direction: column; align-items: center; gap: 14px; min-height: 100vh; box-sizing: border-box; }
+  h1 { font-family: var(--font-display); font-size: 16px; margin: 0; letter-spacing: 0.08em; color: var(--snake); }
+  #score { font-family: var(--font-display); font-size: 12px; font-variant-numeric: tabular-nums; }
+  #best { color: var(--muted); }
+  canvas { background: var(--board); border: 2px solid var(--line); width: min(100%, 400px); aspect-ratio: 1; touch-action: none; image-rendering: pixelated; }
+  p { color: var(--muted); font-size: 14px; margin: 0; text-align: center; }
+  button { font: inherit; background: var(--snake); color: var(--bg); border: 0; padding: 8px 18px; cursor: pointer; font-weight: 600; }
+  button:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 </style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Press+Start+2P&display=swap">
 </head>
 <body>
-<div id="score">Score: 0</div>
+
+<h1>POCKET SNAKE</h1>
+<div id="score">Score 0 <span id="best">· Best 0</span></div>
 <canvas id="c" width="400" height="400"></canvas>
-<p>Arrow keys / WASD or swipe to move. Space to restart.</p>
+<button id="restart" type="button">New game</button>
+<p>Arrow keys or WASD to steer. Swipe on touch screens. Space restarts.</p>
+
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
 const size = 20, cells = canvas.width / size;
-let snake, dir, nextDir, food, score, alive, timer;
+let snake, dir, nextDir, food, score, alive, timer, best = 0;
+
+try { best = +localStorage.getItem('pocket-snake-best') || 0; } catch (e) {}
+
+function showScore() {
+  scoreEl.firstChild.textContent = 'Score ' + score + ' ';
+  bestEl.textContent = '· Best ' + best;
+}
 
 function reset() {
   snake = [{x: 10, y: 10}, {x: 9, y: 10}, {x: 8, y: 10}];
@@ -28,9 +59,10 @@ function reset() {
   score = 0;
   alive = true;
   placeFood();
-  scoreEl.textContent = 'Score: 0';
+  showScore();
   clearInterval(timer);
   timer = setInterval(step, 110);
+  draw();
 }
 
 function placeFood() {
@@ -46,13 +78,18 @@ function step() {
   if (head.x < 0 || head.y < 0 || head.x >= cells || head.y >= cells ||
       snake.some(s => s.x === head.x && s.y === head.y)) {
     alive = false;
+    clearInterval(timer);
     draw();
     return;
   }
   snake.unshift(head);
   if (head.x === food.x && head.y === food.y) {
     score++;
-    scoreEl.textContent = 'Score: ' + score;
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem('pocket-snake-best', best); } catch (e) {}
+    }
+    showScore();
     placeFood();
   } else {
     snake.pop();
@@ -62,21 +99,21 @@ function step() {
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#e74c3c';
-  ctx.fillRect(food.x * size + 2, food.y * size + 2, size - 4, size - 4);
+  ctx.fillStyle = '#ff6b4a';
+  ctx.fillRect(food.x * size + 3, food.y * size + 3, size - 6, size - 6);
   snake.forEach((s, i) => {
-    ctx.fillStyle = i === 0 ? '#2ecc71' : '#27ae60';
+    ctx.fillStyle = i === 0 ? '#a6f2c2' : '#5fd38a';
     ctx.fillRect(s.x * size + 1, s.y * size + 1, size - 2, size - 2);
   });
   if (!alive) {
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillStyle = 'rgba(14,20,17,0.78)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#fff';
-    ctx.font = '28px sans-serif';
+    ctx.fillStyle = '#e4efe7';
     ctx.textAlign = 'center';
-    ctx.fillText('Game over', canvas.width / 2, canvas.height / 2 - 6);
-    ctx.font = '16px sans-serif';
-    ctx.fillText('Press Space to restart', canvas.width / 2, canvas.height / 2 + 22);
+    ctx.font = '20px "Press Start 2P", monospace';
+    ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 6);
+    ctx.font = '14px "DM Sans", sans-serif';
+    ctx.fillText('Press Space or tap to play again', canvas.width / 2, canvas.height / 2 + 24);
   }
 }
 
@@ -100,11 +137,12 @@ canvas.addEventListener('touchstart', e => { t0 = e.touches[0]; if (!alive) rese
 canvas.addEventListener('touchend', e => {
   if (!t0) return;
   const t = e.changedTouches[0], dx = t.clientX - t0.clientX, dy = t.clientY - t0.clientY;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
   if (Math.abs(dx) > Math.abs(dy)) turn(Math.sign(dx), 0); else turn(0, Math.sign(dy));
 });
+document.getElementById('restart').addEventListener('click', reset);
 
 reset();
-draw();
 </script>
 </body>
 </html>
