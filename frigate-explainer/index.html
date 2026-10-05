@@ -104,7 +104,10 @@ td code { white-space: nowrap; }
 
 figure { margin: 1.5rem 0; }
 figure.diagram { background: var(--surface); border: 1px solid var(--rule); padding: 1rem; color: var(--ink); }
+figure.diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 figure.diagram svg { width: 100%; height: auto; display: block; overflow: visible; }
+figure.diagram figcaption { position: sticky; left: 0; }
+figure.diagram.scrolls::before { content: "Swipe sideways to see all of the diagram \2192"; display: block; position: sticky; left: 0; font-family: var(--f-mono); font-size: 0.6875rem; color: var(--accent-text); margin-bottom: 0.5rem; }
 figure.photo img { border: 1px solid var(--rule); }
 figure.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.75rem; }
 figure.pair figcaption { grid-column: 1 / -1; }
@@ -169,6 +172,8 @@ footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 3px solid var(--ink)
   main { padding-inline: 16px; padding-block: 1.25rem 4rem; }
   h1 { font-size: 2.1rem; }
   h2 { font-size: 1.6rem; }
+  figure.diagram { padding: 0.75rem; }
+  .tbl table { min-width: 34rem; }
 }
 </style>
 </head>
@@ -2392,6 +2397,19 @@ footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 3px solid var(--ink)
     var v = el ? parseFloat(el.value) : NaN;
     return isFinite(v) && v >= min ? v : fallback;
   }
+
+  var diagrams = Array.prototype.slice.call(document.querySelectorAll('figure.diagram'));
+  var narrow = window.matchMedia ? window.matchMedia('(max-width: 960px)') : null;
+  function fitDiagrams() {
+    var small = narrow && narrow.matches;
+    diagrams.forEach(function (fig) {
+      var svg = fig.querySelector('svg'), vb = svg && svg.viewBox && svg.viewBox.baseVal;
+      if (svg) svg.style.minWidth = small && vb && vb.width ? Math.round(vb.width * 0.8) + 'px' : '';
+      fig.classList.toggle('scrolls', fig.scrollWidth > fig.clientWidth + 1);
+    });
+  }
+  fitDiagrams();
+  window.addEventListener('resize', fitDiagrams);
 
   var capOut = document.getElementById('cap-out');
   function cap() {
