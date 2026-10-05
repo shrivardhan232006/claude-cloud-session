@@ -9,47 +9,36 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
 <style>
-/* Layout: technical-manual page. Sticky chapter index on the left, one reading column (about 70ch) with figures that may run wider. Chapters carry manual reference codes. */
+/* Layout: technical-manual page. Sticky chapter index on the left, one reading column (about 70ch) with figures that may run wider. Chapters carry manual reference codes.
+   Color: Anthropic-style orange on white, one look for all viewers. Orange = primary path; blue = secondary channel. */
 :root {
-  --paper: #f4f6f6;
+  --paper: #ffffff;
   --surface: #ffffff;
-  --ink: #15212b;
-  --ink-2: #4b5966;
-  --ink-3: #6f7d89;
-  --rule: #d3dbe0;
-  --accent: #0b726d;
-  --accent-ink: #ffffff;
-  --accent-soft: #dcefec;
-  --hot: #c2410c;
-  --hot-soft: #fbe9df;
-  --code-bg: #ebf0f2;
+  --ink: #141413;
+  --ink-2: #5e5d59;
+  --ink-3: #6f6e69;
+  --rule: #e8e6dc;
+  --accent: #d97757;
+  --accent-text: #b4532f;
+  --accent-ink: #141413;
+  --accent-soft: #fbeee8;
+  --hot: #3b6e9e;
+  --hot-soft: #eaf0f6;
+  --code-bg: #f7f6f2;
   --warn: #b42318; --warn-bg: #fdecea;
-  --caut: #9a5b00; --caut-bg: #fbf1dc;
-  --note: #1b5ea6; --note-bg: #e6eff9;
+  --caut: #8a5a00; --caut-bg: #fbf3e0;
+  --note: #1b5ea6; --note-bg: #e9f0f8;
   --f-display: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
   --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --s-0: 0.8125rem; --s-1: 0.9375rem; --s-2: 1.0625rem; --s-3: 1.375rem; --s-4: 1.875rem; --s-5: 2.75rem;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #0e151b; --surface: #141d25; --ink: #e2e9ee; --ink-2: #a3b1bc; --ink-3: #7f8e9a; --rule: #2a3742;
-    --accent: #43c3b8; --accent-ink: #062321; --accent-soft: #12302e; --hot: #fb8a4c; --hot-soft: #3a2014;
-    --code-bg: #18232c; --warn: #ff7b70; --warn-bg: #351a18; --caut: #f2b04d; --caut-bg: #31250f; --note: #80b6f0; --note-bg: #13263a;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --paper: #0e151b; --surface: #141d25; --ink: #e2e9ee; --ink-2: #a3b1bc; --ink-3: #7f8e9a; --rule: #2a3742;
-  --accent: #43c3b8; --accent-ink: #062321; --accent-soft: #12302e; --hot: #fb8a4c; --hot-soft: #3a2014;
-  --code-bg: #18232c; --warn: #ff7b70; --warn-bg: #351a18; --caut: #f2b04d; --caut-bg: #31250f; --note: #80b6f0; --note-bg: #13263a;
-  color-scheme: dark;
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: var(--s-1); line-height: 1.6; }
-a { color: var(--accent); text-underline-offset: 2px; }
+a { color: var(--accent-text); text-underline-offset: 2px; }
 a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 img { max-width: 100%; height: auto; display: block; }
 
@@ -70,7 +59,7 @@ main { min-width: 0; padding-inline: 2.5rem; padding-block: 2rem 5rem; }
 .wide { max-width: 62rem; }
 
 .title-page { border-bottom: 3px solid var(--ink); padding-bottom: 1.5rem; margin-bottom: 2rem; }
-.eyebrow { font-family: var(--f-mono); font-size: var(--s-0); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); margin: 0 0 0.5rem; }
+.eyebrow { font-family: var(--f-mono); font-size: var(--s-0); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); margin: 0 0 0.5rem; }
 h1 { font-family: var(--f-display); font-weight: 700; font-size: var(--s-5); line-height: 1.05; margin: 0 0 0.75rem; text-wrap: balance; letter-spacing: -0.01em; }
 .lede { font-size: var(--s-2); color: var(--ink-2); max-width: 40rem; margin: 0 0 1.25rem; }
 .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0; border: 1px solid var(--rule); background: var(--surface); margin: 0; }
@@ -81,7 +70,7 @@ h1 { font-family: var(--f-display); font-weight: 700; font-size: var(--s-5); lin
 .title-page + section.chapter { border-top: 0; margin-top: 0; padding-top: 0.5rem; }
 section.chapter { padding-top: 2.5rem; margin-top: 2.5rem; border-top: 1px solid var(--rule); scroll-margin-top: 1rem; }
 .chap-head { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-.chap-code { font-family: var(--f-mono); font-size: var(--s-0); color: var(--accent-ink); background: var(--accent); padding: 0.15rem 0.5rem; border-radius: 3px; font-variant-numeric: tabular-nums; }
+.chap-code { font-family: var(--f-mono); font-size: var(--s-0); font-weight: 500; color: var(--accent-ink); background: var(--accent); padding: 0.15rem 0.5rem; border-radius: 3px; font-variant-numeric: tabular-nums; }
 h2 { font-family: var(--f-display); font-weight: 700; font-size: var(--s-4); line-height: 1.15; margin: 0; text-wrap: balance; }
 h3 { font-family: var(--f-display); font-weight: 600; font-size: var(--s-3); line-height: 1.25; margin: 2.25rem 0 0.5rem; text-wrap: balance; scroll-margin-top: 1rem; }
 h3 .ref, h4 .ref { font-family: var(--f-mono); font-size: 0.8em; color: var(--ink-3); font-weight: 400; margin-right: 0.5rem; }
@@ -95,7 +84,7 @@ code, kbd { font-family: var(--f-mono); font-size: 0.875em; background: var(--co
 pre { font-family: var(--f-mono); font-size: 0.8125rem; line-height: 1.55; background: var(--code-bg); border: 1px solid var(--rule); border-left: 3px solid var(--accent); padding: 0.9rem 1rem; margin: 0 0 1rem; overflow-x: auto; border-radius: 0 4px 4px 0; tab-size: 2; }
 pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
 pre .c { color: var(--ink-3); }
-pre .k { color: var(--accent); }
+pre .k { color: var(--accent-text); }
 pre .v { color: var(--hot); }
 .codecap { font-family: var(--f-mono); font-size: 0.75rem; color: var(--ink-3); margin: 0 0 0.25rem; }
 
@@ -131,12 +120,12 @@ figcaption b { font-family: var(--f-mono); font-weight: 500; color: var(--ink); 
 .d-line-acc { stroke: var(--accent); stroke-width: 1.75; fill: none; }
 .d-line-hot { stroke: var(--hot); stroke-width: 1.75; fill: none; }
 .d-dash { stroke-dasharray: 5 4; }
-.d-zone { fill: var(--accent); fill-opacity: 0.12; stroke: var(--accent); stroke-width: 1.5; }
+.d-zone { fill: var(--accent); fill-opacity: 0.1; stroke: var(--accent); stroke-width: 1.5; }
 .d-t { fill: var(--ink); font-family: var(--f-body); font-size: 13px; }
 .d-tb { fill: var(--ink); font-family: var(--f-body); font-size: 13px; font-weight: 600; }
 .d-ts { fill: var(--ink-2); font-family: var(--f-body); font-size: 11.5px; }
 .d-tm { fill: var(--ink-2); font-family: var(--f-mono); font-size: 11px; }
-.d-tacc { fill: var(--accent); font-family: var(--f-mono); font-size: 11px; }
+.d-tacc { fill: var(--accent-text); font-family: var(--f-mono); font-size: 11px; }
 .d-thot { fill: var(--hot); font-family: var(--f-mono); font-size: 11px; }
 .d-halo { paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round; }
 .d-fill-ink { fill: var(--ink-2); }
@@ -145,18 +134,18 @@ figcaption b { font-family: var(--f-mono); font-weight: 500; color: var(--ink); 
 
 .steps { counter-reset: step; list-style: none; padding: 0; }
 .steps > li { counter-increment: step; position: relative; padding-left: 2.5rem; margin: 0 0 0.75rem; }
-.steps > li::before { content: counter(step); position: absolute; left: 0; top: 0.05rem; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; font-family: var(--f-mono); font-size: 0.8125rem; border: 1.5px solid var(--accent); color: var(--accent); border-radius: 50%; }
+.steps > li::before { content: counter(step); position: absolute; left: 0; top: 0.05rem; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; font-family: var(--f-mono); font-size: 0.8125rem; border: 1.5px solid var(--accent); color: var(--accent-text); border-radius: 50%; }
 
 .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.75rem; margin: 1rem 0 1.25rem; }
 .kv > div { background: var(--surface); border: 1px solid var(--rule); padding: 0.75rem 0.9rem; min-width: 0; }
 .kv h4 { margin: 0 0 0.25rem; font-size: var(--s-1); }
 .kv p { margin: 0; font-size: var(--s-0); color: var(--ink-2); }
-.kv .tag { font-family: var(--f-mono); font-size: 0.6875rem; color: var(--accent); letter-spacing: 0.05em; text-transform: uppercase; }
+.kv .tag { font-family: var(--f-mono); font-size: 0.6875rem; color: var(--accent-text); letter-spacing: 0.05em; text-transform: uppercase; }
 
 details.ref-tree { background: var(--surface); border: 1px solid var(--rule); margin: 0 0 0.5rem; }
 details.ref-tree > summary { cursor: pointer; padding: 0.55rem 0.8rem; font-family: var(--f-mono); font-size: 0.8125rem; list-style: none; display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
 details.ref-tree > summary::-webkit-details-marker { display: none; }
-details.ref-tree > summary::before { content: "+"; color: var(--accent); width: 0.75rem; }
+details.ref-tree > summary::before { content: "+"; color: var(--accent-text); width: 0.75rem; }
 details.ref-tree[open] > summary::before { content: "\2212"; }
 details.ref-tree > summary span { font-family: var(--f-body); color: var(--ink-2); font-size: var(--s-0); }
 details.ref-tree > div { padding: 0 0.9rem 0.6rem 2.3rem; font-size: var(--s-0); }
@@ -166,7 +155,7 @@ details.ref-tree > div { padding: 0 0.9rem 0.6rem 2.3rem; font-size: var(--s-0);
 .calc label { display: grid; gap: 0.2rem; font-size: var(--s-0); color: var(--ink-2); flex: 1 1 8rem; }
 .calc input, .calc select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); padding: 0.4rem 0.5rem; border-radius: 3px; width: 100%; }
 .calc output { font-family: var(--f-mono); font-size: var(--s-2); }
-.calc output b { color: var(--accent); font-size: var(--s-3); }
+.calc output b { color: var(--accent-text); font-size: var(--s-3); }
 
 .ste-badge { display: inline-flex; gap: 0.4rem; align-items: center; font-family: var(--f-mono); font-size: 0.75rem; border: 1px solid var(--rule); padding: 0.15rem 0.5rem; border-radius: 999px; color: var(--ink-2); background: var(--surface); }
 footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 3px solid var(--ink); font-size: var(--s-0); color: var(--ink-2); }
@@ -480,7 +469,7 @@ footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 3px solid var(--ink)
       <text x="560" y="540" text-anchor="middle" class="d-tm">ZMQ ipc:///tmp/cache/comms (REQ/REP): DB inserts, MQTT/WS messages → Dispatcher</text>
       <text x="1018" y="440" class="d-tm" transform="rotate(-90 1018 440)">to Dispatcher</text>
     </svg>
-    <figcaption><b>Fig. 02-2</b>Processes and the channels between them. Green: shared memory for frames. Orange: the detector channel. The ZMQ bus <code>detection/video</code> sends each processed frame to four processes at the same time. The children do not write to the database. They send the rows to the main process over the dashed channel.</figcaption>
+    <figcaption><b>Fig. 02-2</b>Processes and the channels between them. Orange: shared memory for frames. Blue: the detector channel. The ZMQ bus <code>detection/video</code> sends each processed frame to four processes at the same time. The children do not write to the database. They send the rows to the main process over the dashed channel.</figcaption>
   </figure>
 
   <h3><span class="ref">02.3</span>Frame transport</h3>
@@ -890,11 +879,11 @@ footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 3px solid var(--ink)
       <path d="M385 64 L385 110" class="d-line" marker-end="url(#a04b)"/><text x="393" y="92" class="d-tm">no</text>
       <rect x="250" y="110" width="270" height="62" rx="4" class="d-box"/><text x="385" y="132" text-anchor="middle" class="d-t">review.alerts.enabled</text><text x="385" y="148" text-anchor="middle" class="d-t">and label in alerts.labels</text><text x="385" y="164" text-anchor="middle" class="d-t">and in alerts.required_zones?</text>
       <path d="M520 141 L620 141" class="d-line" marker-end="url(#a04b)"/><text x="570" y="135" text-anchor="middle" class="d-tm">yes</text>
-      <rect x="620" y="118" width="160" height="46" rx="23" class="d-hot"/><text x="700" y="139" text-anchor="middle" class="d-tb">ALERT</text><text x="700" y="155" text-anchor="middle" class="d-ts">default: person, car</text>
+      <rect x="620" y="118" width="160" height="46" rx="23" class="d-acc"/><text x="700" y="139" text-anchor="middle" class="d-tb">ALERT</text><text x="700" y="155" text-anchor="middle" class="d-ts">default: person, car</text>
       <path d="M385 172 L385 218" class="d-line" marker-end="url(#a04b)"/><text x="393" y="200" class="d-tm">no</text>
       <rect x="250" y="218" width="270" height="62" rx="4" class="d-box"/><text x="385" y="240" text-anchor="middle" class="d-t">review.detections.enabled</text><text x="385" y="256" text-anchor="middle" class="d-t">and label in detections.labels (all)</text><text x="385" y="272" text-anchor="middle" class="d-t">and in detections.required_zones?</text>
       <path d="M520 249 L620 249" class="d-line" marker-end="url(#a04b)"/><text x="570" y="243" text-anchor="middle" class="d-tm">yes</text>
-      <rect x="620" y="226" width="160" height="46" rx="23" class="d-acc"/><text x="700" y="247" text-anchor="middle" class="d-tb">DETECTION</text><text x="700" y="263" text-anchor="middle" class="d-ts">all other labels</text>
+      <rect x="620" y="226" width="160" height="46" rx="23" class="d-hot"/><text x="700" y="247" text-anchor="middle" class="d-tb">DETECTION</text><text x="700" y="263" text-anchor="middle" class="d-ts">all other labels</text>
       <path d="M385 280 L385 320" class="d-line" marker-end="url(#a04b)"/><text x="393" y="304" class="d-tm">no</text>
       <rect x="305" y="320" width="160" height="40" rx="20" class="d-soft"/><text x="385" y="345" text-anchor="middle" class="d-t">no review item</text>
       <text x="20" y="130" class="d-ts">Empty required_zones</text>
@@ -914,12 +903,12 @@ footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 3px solid var(--ink)
         <text x="100" y="208">0 s</text><text x="250" y="208">20</text><text x="325" y="208">30</text><text x="550" y="208">60</text><text x="662" y="208">75</text><text x="884" y="208">105</text>
       </g>
       <text x="20" y="44" class="d-t">person</text>
-      <rect x="100" y="32" width="150" height="16" rx="2" class="d-fill-hot"/>
+      <rect x="100" y="32" width="150" height="16" rx="2" class="d-fill-acc"/>
       <text x="20" y="74" class="d-t">dog</text>
-      <rect x="325" y="62" width="337" height="16" rx="2" class="d-fill-acc"/>
+      <rect x="325" y="62" width="337" height="16" rx="2" class="d-fill-hot"/>
       <text x="20" y="114" class="d-t">items</text>
-      <rect x="100" y="100" width="450" height="22" rx="3" class="d-hot"/><text x="110" y="116" class="d-tm">alert (person, dog)</text>
-      <rect x="550" y="100" width="337" height="22" rx="3" class="d-acc"/><text x="560" y="116" class="d-tm">detection (dog)</text>
+      <rect x="100" y="100" width="450" height="22" rx="3" class="d-acc"/><text x="110" y="116" class="d-tm">alert (person, dog)</text>
+      <rect x="550" y="100" width="337" height="22" rx="3" class="d-hot"/><text x="560" y="116" class="d-tm">detection (dog)</text>
       <path d="M250 128 L550 128" class="d-line d-dash"/><text x="400" y="144" text-anchor="middle" class="d-ts">alerts.cutoff_time 40 s after last alert activity</text>
       <path d="M662 128 L887 128" class="d-line d-dash"/><text x="775" y="144" text-anchor="middle" class="d-ts">detections.cutoff_time 30 s</text>
       <text x="100" y="172" class="d-ts">recording keeps pre_capture / post_capture (5 s) around each item</text>
@@ -1039,7 +1028,7 @@ footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 3px solid var(--ink)
       <text x="10" y="130" class="d-t">detections: 14 d, motion</text>
       <rect x="200" y="118" width="317" height="18" class="d-acc" style="fill-opacity:.6"/>
       <text x="10" y="170" class="d-t">alerts: 30 d, motion</text>
-      <rect x="200" y="158" width="680" height="18" class="d-hot"/>
+      <rect x="200" y="158" width="680" height="18" class="d-acc" style="stroke-width:2"/>
       <text x="252" y="51" class="d-ts">every segment</text>
       <text x="366" y="91" class="d-ts">segments with motion</text>
       <text x="524" y="131" class="d-ts">segments in detection items (with motion)</text>
