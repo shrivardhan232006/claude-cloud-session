@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Device Pipeline</title>
+<meta name="description" content="A simple guide to a pipeline that finds a new object in saved camera video from 5-10 example images, lets a person check the results, and trains a model with them.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: technical-manual page. Sticky chapter index on the left, one reading column (about 70ch) with figures that may run wider. Chapters carry manual reference codes.
+   Color: Anthropic-style orange on white, one look for all viewers. Orange = primary path; blue = secondary channel. */
+:root {
+  --paper: #ffffff;
+  --surface: #ffffff;
+  --ink: #141413;
+  --ink-2: #5e5d59;
+  --ink-3: #6f6e69;
+  --rule: #e8e6dc;
+  --accent: #d97757;
+  --accent-text: #b4532f;
+  --accent-ink: #141413;
+  --accent-soft: #fbeee8;
+  --hot: #3b6e9e;
+  --hot-soft: #eaf0f6;
+  --code-bg: #f7f6f2;
+  --warn: #b42318; --warn-bg: #fdecea;
+  --caut: #8a5a00; --caut-bg: #fbf3e0;
+  --note: #1b5ea6; --note-bg: #e9f0f8;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --s-0: 0.8125rem; --s-1: 0.9375rem; --s-2: 1.0625rem; --s-3: 1.375rem; --s-4: 1.875rem; --s-5: 2.75rem;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: var(--s-1); line-height: 1.6; }
+a { color: var(--accent-text); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+img { max-width: 100%; height: auto; display: block; }
+
+.shell { display: grid; grid-template-columns: 17rem minmax(0, 1fr); max-width: 84rem; margin: 0 auto; }
+.toc { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; max-height: 100vh; overflow-y: auto; padding: 1.5rem 1rem 2rem 1.25rem; border-right: 1px solid var(--rule); font-size: var(--s-0); }
+.toc .brand { font-family: var(--f-display); font-weight: 700; font-size: 1.125rem; letter-spacing: 0.01em; margin: 0 0 0.25rem; }
+.toc .sub { color: var(--ink-3); margin: 0 0 1rem; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.125rem; }
+.toc a { display: grid; grid-template-columns: 2.5rem 1fr; gap: 0.25rem; padding: 0.3rem 0.5rem; border-radius: 4px; color: var(--ink-2); text-decoration: none; }
+.toc a:hover { background: var(--code-bg); color: var(--ink); }
+.toc a.on { background: var(--accent-soft); color: var(--ink); }
+.toc a span:first-child { font-family: var(--f-mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.toc-mobile { display: none; }
+
+main { min-width: 0; padding-inline: 2.5rem; padding-block: 2rem 5rem; }
+.col { max-width: 62rem; }
+.col > :not(.wide):not(.tbl):not(pre):not(.kv):not(.calc):not(.chap-head) { max-width: 46rem; }
+.wide { max-width: 62rem; }
+
+.title-page { border-bottom: 3px solid var(--ink); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+.eyebrow { font-family: var(--f-mono); font-size: var(--s-0); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); margin: 0 0 0.5rem; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: var(--s-5); line-height: 1.05; margin: 0 0 0.75rem; text-wrap: balance; letter-spacing: -0.01em; }
+.lede { font-size: var(--s-2); color: var(--ink-2); max-width: 40rem; margin: 0 0 1.25rem; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0; border: 1px solid var(--rule); background: var(--surface); margin: 0; }
+.meta div { padding: 0.6rem 0.8rem; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); min-width: 0; }
+.meta dt { font-family: var(--f-mono); font-size: 0.6875rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.meta dd { margin: 0.1rem 0 0; font-weight: 500; overflow-wrap: anywhere; }
+
+.title-page + section.chapter { border-top: 0; margin-top: 0; padding-top: 0.5rem; }
+section.chapter { padding-top: 2.5rem; margin-top: 2.5rem; border-top: 1px solid var(--rule); scroll-margin-top: 1rem; }
+.chap-head { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.chap-code { font-family: var(--f-mono); font-size: var(--s-0); font-weight: 500; color: var(--accent-ink); background: var(--accent); padding: 0.15rem 0.5rem; border-radius: 3px; font-variant-numeric: tabular-nums; }
+h2 { font-family: var(--f-display); font-weight: 700; font-size: var(--s-4); line-height: 1.15; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--f-display); font-weight: 600; font-size: var(--s-3); line-height: 1.25; margin: 2.25rem 0 0.5rem; text-wrap: balance; scroll-margin-top: 1rem; }
+h3 .ref, h4 .ref { font-family: var(--f-mono); font-size: 0.8em; color: var(--ink-3); font-weight: 400; margin-right: 0.5rem; }
+h4 { font-family: var(--f-display); font-weight: 600; font-size: var(--s-2); margin: 1.5rem 0 0.25rem; }
+p { margin: 0 0 0.85rem; }
+.chap-intro { font-size: var(--s-2); color: var(--ink-2); }
+ul, ol { padding-left: 1.25rem; margin: 0 0 0.9rem; }
+li { margin: 0.2rem 0; }
+strong { font-weight: 600; }
+code, kbd { font-family: var(--f-mono); font-size: 0.875em; background: var(--code-bg); padding: 0.05rem 0.3rem; border-radius: 3px; overflow-wrap: anywhere; }
+pre { font-family: var(--f-mono); font-size: 0.8125rem; line-height: 1.55; background: var(--code-bg); border: 1px solid var(--rule); border-left: 3px solid var(--accent); padding: 0.9rem 1rem; margin: 0 0 1rem; overflow-x: auto; border-radius: 0 4px 4px 0; tab-size: 2; }
+pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
+pre .c { color: var(--ink-3); }
+pre .k { color: var(--accent-text); }
+pre .v { color: var(--hot); }
+.codecap { font-family: var(--f-mono); font-size: 0.75rem; color: var(--ink-3); margin: 0 0 0.25rem; }
+
+.callout { border: 1px solid; border-left-width: 4px; padding: 0.7rem 0.9rem; margin: 1rem 0; border-radius: 0 4px 4px 0; }
+.callout > b:first-child { display: block; font-family: var(--f-mono); font-size: 0.75rem; letter-spacing: 0.1em; margin-bottom: 0.2rem; }
+.callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+.warning { border-color: var(--warn); background: var(--warn-bg); } .warning > b:first-child { color: var(--warn); }
+.caution { border-color: var(--caut); background: var(--caut-bg); } .caution > b:first-child { color: var(--caut); }
+.note { border-color: var(--note); background: var(--note-bg); } .note > b:first-child { color: var(--note); }
+
+.tbl { overflow-x: auto; margin: 0 0 1.25rem; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: var(--s-0); font-variant-numeric: tabular-nums; }
+th, td { text-align: left; vertical-align: top; padding: 0.5rem 0.65rem; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--f-mono); font-weight: 500; font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); background: var(--code-bg); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+
+figure { margin: 1.5rem 0; }
+figure.diagram { background: var(--surface); border: 1px solid var(--rule); padding: 1rem; color: var(--ink); }
+figure.diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+figure.diagram svg { width: 100%; height: auto; display: block; overflow: visible; }
+figure.diagram figcaption { position: sticky; left: 0; }
+figure.diagram.scrolls::before { content: "Swipe sideways to see all of the diagram \2192"; display: block; position: sticky; left: 0; font-family: var(--f-mono); font-size: 0.6875rem; color: var(--accent-text); margin-bottom: 0.5rem; }
+figure.photo img { border: 1px solid var(--rule); }
+figure.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.75rem; }
+figure.pair figcaption { grid-column: 1 / -1; }
+figcaption { font-size: var(--s-0); color: var(--ink-2); margin-top: 0.6rem; max-width: 46rem; }
+figcaption b { font-family: var(--f-mono); font-weight: 500; color: var(--ink); margin-right: 0.35rem; }
+
+/* SVG diagram vocabulary */
+.d-box { fill: var(--surface); stroke: var(--ink-2); stroke-width: 1.25; }
+.d-soft { fill: var(--code-bg); stroke: var(--rule); stroke-width: 1; }
+.d-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.d-hot { fill: var(--hot-soft); stroke: var(--hot); stroke-width: 1.5; }
+.d-line { stroke: var(--ink-2); stroke-width: 1.25; fill: none; }
+.d-line-acc { stroke: var(--accent); stroke-width: 1.75; fill: none; }
+.d-line-hot { stroke: var(--hot); stroke-width: 1.75; fill: none; }
+.d-dash { stroke-dasharray: 5 4; }
+.d-zone { fill: var(--accent); fill-opacity: 0.1; stroke: var(--accent); stroke-width: 1.5; }
+.d-t { fill: var(--ink); font-family: var(--f-body); font-size: 13px; }
+.d-tb { fill: var(--ink); font-family: var(--f-body); font-size: 13px; font-weight: 600; }
+.d-ts { fill: var(--ink-2); font-family: var(--f-body); font-size: 11.5px; }
+.d-tm { fill: var(--ink-2); font-family: var(--f-mono); font-size: 11px; }
+.d-tacc { fill: var(--accent-text); font-family: var(--f-mono); font-size: 11px; }
+.d-thot { fill: var(--hot); font-family: var(--f-mono); font-size: 11px; }
+.d-halo { paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round; }
+.d-fill-ink { fill: var(--ink-2); }
+.d-fill-acc { fill: var(--accent); }
+.d-fill-hot { fill: var(--hot); }
+
+.steps { counter-reset: step; list-style: none; padding: 0; }
+.steps > li { counter-increment: step; position: relative; padding-left: 2.5rem; margin: 0 0 0.75rem; }
+.steps > li::before { content: counter(step); position: absolute; left: 0; top: 0.05rem; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; font-family: var(--f-mono); font-size: 0.8125rem; border: 1.5px solid var(--accent); color: var(--accent-text); border-radius: 50%; }
+
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.75rem; margin: 1rem 0 1.25rem; }
+.kv > div { background: var(--surface); border: 1px solid var(--rule); padding: 0.75rem 0.9rem; min-width: 0; }
+.kv h4 { margin: 0 0 0.25rem; font-size: var(--s-1); }
+.kv p { margin: 0; font-size: var(--s-0); color: var(--ink-2); }
+.kv .tag { font-family: var(--f-mono); font-size: 0.6875rem; color: var(--accent-text); letter-spacing: 0.05em; text-transform: uppercase; }
+
+details.ref-tree { background: var(--surface); border: 1px solid var(--rule); margin: 0 0 0.5rem; }
+details.ref-tree > summary { cursor: pointer; padding: 0.55rem 0.8rem; font-family: var(--f-mono); font-size: 0.8125rem; list-style: none; display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
+details.ref-tree > summary::-webkit-details-marker { display: none; }
+details.ref-tree > summary::before { content: "+"; color: var(--accent-text); width: 0.75rem; }
+details.ref-tree[open] > summary::before { content: "\2212"; }
+details.ref-tree > summary span { font-family: var(--f-body); color: var(--ink-2); font-size: var(--s-0); }
+details.ref-tree > div { padding: 0 0.9rem 0.6rem 2.3rem; font-size: var(--s-0); }
+
+.calc { background: var(--surface); border: 1px solid var(--rule); border-top: 3px solid var(--accent); padding: 1rem; margin: 1rem 0 1.5rem; display: grid; gap: 0.75rem; }
+.calc .row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+.calc label { display: grid; gap: 0.2rem; font-size: var(--s-0); color: var(--ink-2); flex: 1 1 8rem; }
+.calc input, .calc select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); padding: 0.4rem 0.5rem; border-radius: 3px; width: 100%; }
+.calc output { font-family: var(--f-mono); font-size: var(--s-2); }
+.calc output b { color: var(--accent-text); font-size: var(--s-3); }
+
+.ste-badge { display: inline-flex; gap: 0.4rem; align-items: center; font-family: var(--f-mono); font-size: 0.75rem; border: 1px solid var(--rule); padding: 0.15rem 0.5rem; border-radius: 999px; color: var(--ink-2); background: var(--surface); }
+footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 3px solid var(--ink); font-size: var(--s-0); color: var(--ink-2); }
+
+@media (max-width: 960px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .toc { display: none; }
+  .toc-mobile { display: block; background: var(--surface); border: 1px solid var(--rule); margin-bottom: 1.5rem; }
+  .toc-mobile summary { padding: 0.6rem 0.8rem; cursor: pointer; font-family: var(--f-mono); font-size: var(--s-0); }
+  .toc-mobile ol { margin: 0; padding: 0 0.8rem 0.8rem 2rem; font-size: var(--s-0); }
+  main { padding-inline: 16px; padding-block: 1.25rem 4rem; }
+  h1 { font-size: 2.1rem; }
+  h2 { font-size: 1.6rem; }
+  figure.diagram { padding: 0.75rem; }
+  .tbl table { min-width: 34rem; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="Chapters">
+  <p class="brand">Device Pipeline</p>
+  <p class="sub">Teach a new object from a few images</p>
+  <ol id="toc-list"></ol>
+</nav>
+<main>
+
+<header class="title-page wide" id="top">
+  <p class="eyebrow">Design guide &middot; simple English</p>
+  <h1>Device Pipeline</h1>
+  <p class="lede">The user shows the system a new object with only 5–10 pictures. The system then looks through 2–3 days of saved camera video and finds many more pictures of that object. A person checks every result. The checked pictures then train the camera model so it can find the object by itself.</p>
+  <dl class="meta">
+    <div><dt>Input</dt><dd>5–10 example pictures and 2–3 days of saved video</dd></div>
+    <div><dt>Output</dt><dd>A checked training set and a better model</dd></div>
+    <div><dt>Example</dt><dd>A tray in a jewellery shop</dd></div>
+    <div><dt>Works with</dt><dd>Frigate NVR 0.18 (unchanged Docker image)</dd></div>
+  </dl>
+  <details class="toc-mobile"><summary>Chapters</summary><ol id="toc-list-m"></ol></details>
+</header>
+
+<section class="chapter col" id="c00" data-code="00" data-title="The idea in one minute">
+  <div class="chap-head"><span class="chap-code">00</span><h2>The idea in one minute</h2></div>
+  <p class="chap-intro">To train a model, you need hundreds of labeled pictures. Users do not want to take hundreds of pictures. But the cameras already recorded the object many times. This pipeline finds those moments in the video for you.</p>
+  <div class="kv">
+    <div><span class="tag">Step A</span><h4>Show</h4><p>The user marks the object in a few pictures.</p></div>
+    <div><span class="tag">Step B</span><h4>Search</h4><p>The system searches the saved video for things that look the same.</p></div>
+    <div><span class="tag">Step C</span><h4>Check</h4><p>The user says "yes" or "no" to each result.</p></div>
+    <div><span class="tag">Step D</span><h4>Train</h4><p>The system trains the model with the checked pictures.</p></div>
+  </div>
+  <p>This is the same idea as face recognition. The system makes a short number code, called an <strong>embedding</strong>, for each picture of the object. Pictures of the same object get codes that are close together. So the system can compare codes to find the object again.</p>
+  <div class="callout note"><b>NOTE</b><p>The search does not train anything. It only collects data. Training happens one time, at the end, after a person has checked the data.</p></div>
+</section>
+
+<section class="chapter col" id="c01" data-code="01" data-title="The full pipeline">
+  <div class="chap-head"><span class="chap-code">01</span><h2>The full pipeline</h2></div>
+  <p class="chap-intro">The pipeline has ten steps. Steps 4 to 8 repeat two or three times. Each round finds more pictures than the last round.</p>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 960 360" role="img" aria-label="Ten steps. 1 Seed: user boxes the object in 3 to 5 recorded frames. 2 Sample: pick useful frames from the video. 3 Propose: cut each frame into candidate boxes. 4 Search: compare each box with the seeds. 5 Track: follow each hit forward and back in the video. 6 Sort: put results into yes, maybe and look-alike groups. 7 Check: the user confirms. 8 Grow: add confirmed results as new seeds, and loop back to step 4. 9 Label the rest: box all other objects. 10 Train: fine-tune, test and release.">
+      <defs>
+        <marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-ink"/></marker>
+        <marker id="c1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-acc"/></marker>
+      </defs>
+      <g>
+        <rect x="20" y="40" width="160" height="76" rx="4" class="d-acc"/><text x="100" y="64" text-anchor="middle" class="d-tb">1 Seed</text><text x="100" y="84" text-anchor="middle" class="d-ts">user boxes the object</text><text x="100" y="100" text-anchor="middle" class="d-ts">in 3–5 video frames</text>
+        <rect x="205" y="40" width="160" height="76" rx="4" class="d-box"/><text x="285" y="64" text-anchor="middle" class="d-tb">2 Sample</text><text x="285" y="84" text-anchor="middle" class="d-ts">pick useful frames,</text><text x="285" y="100" text-anchor="middle" class="d-ts">skip copies</text>
+        <rect x="390" y="40" width="160" height="76" rx="4" class="d-box"/><text x="470" y="64" text-anchor="middle" class="d-tb">3 Propose</text><text x="470" y="84" text-anchor="middle" class="d-ts">cut each frame into</text><text x="470" y="100" text-anchor="middle" class="d-ts">candidate boxes</text>
+        <rect x="575" y="40" width="160" height="76" rx="4" class="d-hot"/><text x="655" y="64" text-anchor="middle" class="d-tb">4 Search</text><text x="655" y="84" text-anchor="middle" class="d-ts">compare each box</text><text x="655" y="100" text-anchor="middle" class="d-ts">with the seeds</text>
+        <rect x="760" y="40" width="180" height="76" rx="4" class="d-box"/><text x="850" y="64" text-anchor="middle" class="d-tb">5 Track</text><text x="850" y="84" text-anchor="middle" class="d-ts">follow each hit forward</text><text x="850" y="100" text-anchor="middle" class="d-ts">and back in the video</text>
+        <rect x="760" y="190" width="180" height="76" rx="4" class="d-box"/><text x="850" y="214" text-anchor="middle" class="d-tb">6 Sort</text><text x="850" y="234" text-anchor="middle" class="d-ts">yes / maybe /</text><text x="850" y="250" text-anchor="middle" class="d-ts">look-alike</text>
+        <rect x="575" y="190" width="160" height="76" rx="4" class="d-acc"/><text x="655" y="214" text-anchor="middle" class="d-tb">7 Check</text><text x="655" y="234" text-anchor="middle" class="d-ts">user confirms,</text><text x="655" y="250" text-anchor="middle" class="d-ts">one track at a time</text>
+        <rect x="390" y="190" width="160" height="76" rx="4" class="d-box"/><text x="470" y="214" text-anchor="middle" class="d-tb">8 Grow</text><text x="470" y="234" text-anchor="middle" class="d-ts">confirmed results</text><text x="470" y="250" text-anchor="middle" class="d-ts">become new seeds</text>
+        <rect x="205" y="190" width="160" height="76" rx="4" class="d-box"/><text x="285" y="214" text-anchor="middle" class="d-tb">9 Label the rest</text><text x="285" y="234" text-anchor="middle" class="d-ts">box people and other</text><text x="285" y="250" text-anchor="middle" class="d-ts">objects too</text>
+        <rect x="20" y="190" width="160" height="76" rx="4" class="d-hot"/><text x="100" y="214" text-anchor="middle" class="d-tb">10 Train</text><text x="100" y="234" text-anchor="middle" class="d-ts">fine-tune, test,</text><text x="100" y="250" text-anchor="middle" class="d-ts">release</text>
+      </g>
+      <g>
+        <path d="M180 78 L205 78" class="d-line" marker-end="url(#c1)"/><path d="M365 78 L390 78" class="d-line" marker-end="url(#c1)"/><path d="M550 78 L575 78" class="d-line" marker-end="url(#c1)"/><path d="M735 78 L760 78" class="d-line" marker-end="url(#c1)"/>
+        <path d="M850 116 L850 190" class="d-line" marker-end="url(#c1)"/>
+        <path d="M760 228 L735 228" class="d-line" marker-end="url(#c1)"/><path d="M575 228 L550 228" class="d-line" marker-end="url(#c1)"/>
+        <path d="M470 190 L470 150 L655 150 L655 116" class="d-line-acc" marker-end="url(#c1a)"/>
+        <text x="562" y="144" text-anchor="middle" class="d-tacc d-halo">repeat 2–3 rounds</text>
+        <path d="M390 228 L365 228" class="d-line d-dash" marker-end="url(#c1)"/>
+        <text x="378" y="290" text-anchor="middle" class="d-ts">when there is enough data</text>
+        <path d="M205 228 L180 228" class="d-line" marker-end="url(#c1)"/>
+      </g>
+      <text x="480" y="330" text-anchor="middle" class="d-ts">Orange boxes: the user takes part. Blue boxes: heavy computer work.</text>
+    </svg>
+    <figcaption><b>Fig. 01-1</b>The ten steps. The loop from step 8 back to step 4 is the important part. Each round uses the new confirmed pictures to find pictures that the first search missed.</figcaption>
+  </figure>
+</section>
+
+<section class="chapter col" id="c02" data-code="02" data-title="Each step, simply">
+  <div class="chap-head"><span class="chap-code">02</span><h2>Each step, simply</h2></div>
+
+  <h3><span class="ref">02.1</span>Seed: show the object</h3>
+  <p>The user opens a saved video, stops it where the object is, and draws a box around it. Do this 3–5 times, if possible at different times of day.</p>
+  <div class="callout caution"><b>CAUTION</b><p>Phone photos are a weak start. A phone photo looks different from a camera frame: different angle, color, sharpness, and no night mode. Use them only if the object is not in the video yet. Boxes drawn on real video frames work much better.</p></div>
+
+  <h3><span class="ref">02.2</span>Sample: pick useful frames</h3>
+  <p>Three days of video at 1 frame per second is about 260,000 frames for each camera. That is too many to search. So the system picks frames in a smart way:</p>
+  <ul>
+    <li>When something moves, it takes more frames. Frigate already saves how much motion each 10-second piece of video has.</li>
+    <li>When nothing moves, it takes about one frame each minute.</li>
+    <li>It removes frames that are almost the same as the frame before.</li>
+  </ul>
+
+  <h3><span class="ref">02.3</span>Propose: cut frames into boxes</h3>
+  <p>A tray may fill only 2% of the picture. If you compare the whole frame with the tray, the shop, not the tray, decides the result. So the system first cuts each frame into many candidate boxes. It can use tiles of different sizes, or a model that finds "any object" in a picture. Then it compares each box, not the whole frame.</p>
+
+  <h3><span class="ref">02.4</span>Search: compare with the seeds</h3>
+  <p>The system makes an embedding (number code) for each candidate box and for each seed. It then measures how close they are. A score near 1 means "very similar". The system puts the results into four groups:</p>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 900 190" role="img" aria-label="A similarity bar from low to high split into four bands: below about 0.5 ignore; a near-miss band where look-alikes become hard negatives; a middle band that the user must check; a high band of likely matches, which the user still confirms quickly.">
+      <rect x="40" y="60" width="200" height="40" class="d-soft"/>
+      <rect x="240" y="60" width="200" height="40" class="d-hot"/>
+      <rect x="440" y="60" width="220" height="40" class="d-box"/>
+      <rect x="660" y="60" width="200" height="40" class="d-acc"/>
+      <text x="140" y="85" text-anchor="middle" class="d-t">ignore</text>
+      <text x="340" y="85" text-anchor="middle" class="d-t">look-alikes</text>
+      <text x="550" y="85" text-anchor="middle" class="d-t">maybe</text>
+      <text x="760" y="85" text-anchor="middle" class="d-t">likely yes</text>
+      <text x="40" y="44" class="d-tm">low similarity</text>
+      <text x="860" y="44" text-anchor="end" class="d-tm">high similarity</text>
+      <text x="140" y="126" text-anchor="middle" class="d-ts">not the object</text>
+      <text x="340" y="126" text-anchor="middle" class="d-ts">similar, but not it:</text>
+      <text x="340" y="142" text-anchor="middle" class="d-ts">best "no" examples</text>
+      <text x="550" y="126" text-anchor="middle" class="d-ts">user must decide:</text>
+      <text x="550" y="142" text-anchor="middle" class="d-ts">most useful to check</text>
+      <text x="760" y="126" text-anchor="middle" class="d-ts">user confirms fast</text>
+      <text x="450" y="178" text-anchor="middle" class="d-ts">The band limits are set for each object from the seed scores. They are not fixed numbers.</text>
+    </svg>
+    <figcaption><b>Fig. 02-1</b>The four result groups. Do not keep only the top results. The "maybe" group shows the object in new conditions. The "look-alike" group teaches the model what is not the object.</figcaption>
+  </figure>
+
+  <h3><span class="ref">02.5</span>Track: follow the object in time</h3>
+  <p>When the system finds the object in one frame, it follows the object forward and back in the video. The object moves, turns and changes light. So one good find gives many new views, for free. This is the strongest step in the pipeline, because the search alone finds only views that look like the seeds.</p>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 900 200" role="img" aria-label="One frame found by search in the middle of a timeline; tracking extends to earlier and later frames, adding a side view, a partly covered view and a dark view that the search alone did not find.">
+      <defs><marker id="c2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-acc"/></marker></defs>
+      <line x1="40" y1="150" x2="860" y2="150" class="d-line"/>
+      <text x="40" y="172" class="d-tm">earlier</text><text x="860" y="172" text-anchor="end" class="d-tm">later</text>
+      <rect x="400" y="60" width="100" height="70" rx="3" class="d-hot"/><text x="450" y="92" text-anchor="middle" class="d-tb">found</text><text x="450" y="110" text-anchor="middle" class="d-ts">by search</text>
+      <rect x="250" y="60" width="100" height="70" rx="3" class="d-acc"/><text x="300" y="92" text-anchor="middle" class="d-t">side view</text>
+      <rect x="100" y="60" width="100" height="70" rx="3" class="d-acc"/><text x="150" y="92" text-anchor="middle" class="d-t">far away</text>
+      <rect x="550" y="60" width="100" height="70" rx="3" class="d-acc"/><text x="600" y="92" text-anchor="middle" class="d-t">half covered</text>
+      <rect x="700" y="60" width="100" height="70" rx="3" class="d-acc"/><text x="750" y="92" text-anchor="middle" class="d-t">darker</text>
+      <path d="M400 95 L350 95" class="d-line-acc" marker-end="url(#c2)"/><path d="M250 95 L200 95" class="d-line-acc" marker-end="url(#c2)"/>
+      <path d="M500 95 L550 95" class="d-line-acc" marker-end="url(#c2)"/><path d="M650 95 L700 95" class="d-line-acc" marker-end="url(#c2)"/>
+      <text x="450" y="34" text-anchor="middle" class="d-ts">The tracker follows the same object, so these are new views of the same thing.</text>
+    </svg>
+    <figcaption><b>Fig. 02-2</b>Tracking turns one find into many different pictures. These are exactly the hard views that the model needs to learn.</figcaption>
+  </figure>
+
+  <h3><span class="ref">02.6</span>Check: the user decides</h3>
+  <p>The user checks the results in the app. To keep this fast:</p>
+  <ul>
+    <li>The app shows one <strong>track</strong> at a time. One "yes" or "no" covers all frames of that track.</li>
+    <li>The app shows the "maybe" group first, because those answers teach the most.</li>
+    <li>A box-tightening tool fixes loose boxes. The user only moves a box when the tool is wrong.</li>
+    <li>Each round asks for a few hundred decisions at most.</li>
+  </ul>
+
+  <h3><span class="ref">02.7</span>Grow: search again</h3>
+  <p>The confirmed results become new seeds. The next search now knows how the object looks at night, from the side and when it is half covered. Two or three rounds are usually enough.</p>
+
+  <h3><span class="ref">02.8</span>Label the rest</h3>
+  <p>Every picture can also show people, cars and other objects. These also need boxes. If they have no box, the model learns that a person is "background" and stops finding people. The current model draws these boxes automatically. The user only confirms them.</p>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 900 210" role="img" aria-label="Left, wrong: only the tray has a box; the person next to it has none, so the model learns the person is background. Right, correct: the tray and the person both have boxes.">
+      <text x="20" y="22" class="d-tm" style="fill:var(--warn)">WRONG: only the tray has a box</text>
+      <rect x="20" y="34" width="400" height="150" rx="4" class="d-soft"/>
+      <rect x="70" y="100" width="150" height="50" rx="3" class="d-hot" style="fill-opacity:.25"/><text x="145" y="130" text-anchor="middle" class="d-t">tray ✓</text>
+      <rect x="270" y="50" width="70" height="120" rx="3" class="d-box" style="stroke-dasharray:4 3"/><text x="305" y="115" text-anchor="middle" class="d-ts">person</text>
+      <text x="350" y="110" class="d-ts">no box</text>
+      <text x="20" y="202" class="d-ts">The model learns: "a person is background".</text>
+      <text x="480" y="22" class="d-tacc">RIGHT: every object has a box</text>
+      <rect x="480" y="34" width="400" height="150" rx="4" class="d-soft"/>
+      <rect x="530" y="100" width="150" height="50" rx="3" class="d-acc"/><text x="605" y="130" text-anchor="middle" class="d-t">tray ✓</text>
+      <rect x="730" y="50" width="80" height="120" rx="3" class="d-acc"/><text x="770" y="115" text-anchor="middle" class="d-t">person ✓</text>
+      <text x="480" y="202" class="d-ts">The model learns the tray and still finds people.</text>
+    </svg>
+    <figcaption><b>Fig. 02-3</b>Box everything, not only the new object.</figcaption>
+  </figure>
+
+  <h3><span class="ref">02.9</span>Positives and negatives</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Type</th><th>What it is</th><th>Why it helps</th></tr></thead>
+    <tbody>
+      <tr><td>Positive</td><td>A box that the user confirmed as the object</td><td>Teaches what the object looks like</td></tr>
+      <tr><td>Look-alike (hard negative)</td><td>A box that looks similar, but the user said "no"</td><td>Stops false alarms. The most useful "no" example.</td></tr>
+      <tr><td>Empty frame</td><td>A frame where the object is not present</td><td>Teaches the normal scene</td></tr>
+      <tr><td>Other objects</td><td>People, cars and other known things, with their own boxes</td><td>Keeps the old classes working</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><span class="ref">02.10</span>Train</h3>
+  <ul>
+    <li><strong>Fine-tune, do not start again.</strong> Start from the current model. Add some old training data, so old classes stay good.</li>
+    <li><strong>Split by time.</strong> Put whole days or whole tracks in the test set. If frames from one track are in both sets, the test score looks better than the truth.</li>
+    <li><strong>Test before release.</strong> The new object must reach the target score. The old classes must not get worse. Then run the new model in the background ("shadow mode") before it goes live.</li>
+  </ul>
+</section>
+
+<section class="chapter col" id="c03" data-code="03" data-title="Problems and fixes">
+  <div class="chap-head"><span class="chap-code">03</span><h2>Problems and fixes</h2></div>
+  <p class="chap-intro">Each problem below can make a bad training set. The pipeline has one step to stop each one.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Problem</th><th>What goes wrong</th><th>Fix in the pipeline</th></tr></thead>
+    <tbody>
+      <tr><td>Small object, big frame</td><td>The whole-frame code describes the room, not the object</td><td>Cut frames into candidate boxes (step 3)</td></tr>
+      <tr><td>Phone photos look different</td><td>The first search misses most frames</td><td>Seed with boxes on real video frames (step 1)</td></tr>
+      <tr><td>Search finds only similar views</td><td>No night, side or half-covered pictures, so the model fails there</td><td>Track (step 5), check the "maybe" group, grow in rounds (step 8)</td></tr>
+      <tr><td>Video was deleted</td><td>Frigate keeps only video with activity by default. A still tray makes no motion, so its video can be gone.</td><td>Turn on continuous recording for the collection days</td></tr>
+      <tr><td>Too much video</td><td>Search takes days and costs a lot</td><td>Smart frame sampling and copy removal (step 2)</td></tr>
+      <tr><td>Too much to check</td><td>The user gives up</td><td>Check by track, "maybe" first, a limit on each round (step 7)</td></tr>
+      <tr><td>Loose boxes</td><td>The model learns wrong edges</td><td>Box-tightening tool, user adjusts (step 7)</td></tr>
+      <tr><td>Other objects have no box</td><td>The model forgets people and cars</td><td>Label the rest (step 9)</td></tr>
+      <tr><td>Very similar objects</td><td>Two trays get mixed up</td><td>Keep look-alikes as "no" examples (02.9)</td></tr>
+      <tr><td>Test score too good</td><td>Same track in training and test</td><td>Split by day or by track (02.10)</td></tr>
+      <tr><td>New model is worse</td><td>The system misses people after an update</td><td>Test gate, shadow mode, automatic rollback</td></tr>
+      <tr><td>Privacy</td><td>The search sees every person in the video</td><td>Run the search at the site, and upload only checked boxes</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter col" id="c04" data-code="04" data-title="Before you start">
+  <div class="chap-head"><span class="chap-code">04</span><h2>Before you start</h2></div>
+  <ol class="steps">
+    <li>Turn on continuous recording for the collection days: <code>record.continuous.days: 3</code>.</li>
+    <li>Make sure that the disk can hold 3 days of video from each camera.</li>
+    <li>Check that the site has a GPU for the search, or plan to run the search during the night.</li>
+    <li>Tell the people in the shop that video is used to train the system, as the local law requires.</li>
+    <li>Pick the object and the cameras that see it.</li>
+    <li>After 2–3 days, start the pipeline from the app.</li>
+  </ol>
+<pre><code><span class="k">record</span>:
+  <span class="k">enabled</span>: <span class="v">true</span>
+  <span class="k">continuous</span>:
+    <span class="k">days</span>: <span class="v">3</span>        <span class="c"># keep all video while you collect data</span></code></pre>
+  <div class="callout warning"><b>WARNING</b><p>Continuous recording uses much more disk space. Set it back to your normal value after the data is collected.</p></div>
+</section>
+
+<section class="chapter col" id="c05" data-code="05" data-title="Where it fits">
+  <div class="chap-head"><span class="chap-code">05</span><h2>Where it fits</h2></div>
+  <p>This pipeline is the "front end" of the <a href="../custom-model-pipeline/">Custom Model Pipeline</a>. It replaces the "Collect" and "Auto-label" steps there. Everything after training (test gate, delivery, rollback) stays the same.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Custom Model Pipeline stage</th><th>With the Device Pipeline</th></tr></thead>
+    <tbody>
+      <tr><td>1 Collect</td><td>Steps 1–5: seed, sample, propose, search, track</td></tr>
+      <tr><td>3 Auto-label</td><td>Step 6 sort and step 9 label the rest</td></tr>
+      <tr><td>4 Verify</td><td>Step 7 check, by track</td></tr>
+      <tr><td>5–12 Freeze to Select</td><td>No change</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer class="wide">
+  <p><strong>Device Pipeline</strong> is a design guide. It is not made or approved by Frigate, Inc. Frigate&trade; is a trademark of Frigate, Inc. Text is in simple English, close to ASD-STE100 Simplified Technical English.</p>
+  <p>Related: <a href="../custom-model-pipeline/">Custom Model Pipeline</a> &middot; <a href="../frigate-explainer/">Frigate Field Manual</a> &middot; <a href="#top">Back to top</a></p>
+</footer>
+</main>
+</div>
+<script>
+(function () {
+  var chapters = Array.prototype.slice.call(document.querySelectorAll('section.chapter[data-code]'));
+  var lists = [document.getElementById('toc-list'), document.getElementById('toc-list-m')];
+  var links = [];
+  chapters.forEach(function (sec) {
+    lists.forEach(function (ol, i) {
+      if (!ol) return;
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.href = '#' + sec.id;
+      var code = document.createElement('span');
+      code.textContent = sec.getAttribute('data-code');
+      var name = document.createElement('span');
+      name.textContent = sec.getAttribute('data-title');
+      a.appendChild(code); a.appendChild(name);
+      li.appendChild(a); ol.appendChild(li);
+      if (i === 0) links.push(a);
+      if (i === 1) a.addEventListener('click', function () { var d = ol.closest('details'); if (d) d.open = false; });
+    });
+  });
+  if ('IntersectionObserver' in window && links.length) {
+    var current = null;
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          var idx = chapters.indexOf(e.target);
+          if (current) current.classList.remove('on');
+          current = links[idx];
+          if (current) current.classList.add('on');
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    chapters.forEach(function (c) { obs.observe(c); });
+  }
+
+  function num(id, min, fallback) {
+    var el = document.getElementById(id);
+    var v = el ? parseFloat(el.value) : NaN;
+    return isFinite(v) && v >= min ? v : fallback;
+  }
+
+  var diagrams = Array.prototype.slice.call(document.querySelectorAll('figure.diagram'));
+  var narrow = window.matchMedia ? window.matchMedia('(max-width: 960px)') : null;
+  function fitDiagrams() {
+    var small = narrow && narrow.matches;
+    diagrams.forEach(function (fig) {
+      var svg = fig.querySelector('svg'), vb = svg && svg.viewBox && svg.viewBox.baseVal;
+      if (svg) svg.style.minWidth = small && vb && vb.width ? Math.round(vb.width * 0.8) + 'px' : '';
+      fig.classList.toggle('scrolls', fig.scrollWidth > fig.clientWidth + 1);
+    });
+  }
+  fitDiagrams();
+  window.addEventListener('resize', fitDiagrams);
+
+  var capOut = document.getElementById('cap-out');
+  function cap() {
+    if (!capOut) return;
+    var ms = num('cap-ms', 1, 15), inst = num('cap-inst', 1, 1), cams = num('cap-cams', 1, 4), fps = num('cap-fps', 1, 5), reg = num('cap-reg', 1, 2);
+    var capacity = (1000 / ms) * inst;
+    var need = cams * fps * reg;
+    var load = need / capacity * 100;
+    var verdict = load <= 60 ? 'enough margin' : load <= 100 ? 'near the limit' : 'too slow: frames will be skipped';
+    capOut.innerHTML = 'Capacity <b>' + Math.round(capacity) + '</b>/s &middot; Demand <b>' + Math.round(need) + '</b>/s &middot; Load <b>' + Math.round(load) + '%</b> (' + verdict + ')';
+  }
+  ['cap-ms', 'cap-inst', 'cap-cams', 'cap-fps', 'cap-reg'].forEach(function (id) { var el = document.getElementById(id); if (el) el.addEventListener('input', cap); });
+  cap();
+
+  var shmOut = document.getElementById('shm-out');
+  function shm() {
+    if (!shmOut) return;
+    var res = (document.getElementById('shm-res').value || '1280x720').split('x');
+    var w = parseInt(res[0], 10), h = parseInt(res[1], 10);
+    var cams = num('shm-cams', 1, 4);
+    var per = (w * h * 1.5 * 20 + 270480) / 1048576;
+    var total = per * cams + 40;
+    var suggest = Math.ceil(total * 1.25 / 64) * 64;
+    shmOut.innerHTML = 'Per camera <b>' + per.toFixed(2) + '</b> MB &middot; Total <b>' + total.toFixed(1) + '</b> MB &middot; Suggested <code>shm_size: "' + suggest + 'mb"</code>';
+  }
+  ['shm-res', 'shm-cams'].forEach(function (id) { var el = document.getElementById(id); if (el) { el.addEventListener('input', shm); el.addEventListener('change', shm); } });
+  shm();
+})();
+</script>
+</body>
+</html>
