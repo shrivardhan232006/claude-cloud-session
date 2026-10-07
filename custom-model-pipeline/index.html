@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Custom Model Pipeline</title>
+<meta name="description" content="Design proposal for a self-service pipeline that adds custom object classes to detection models used with Frigate NVR 0.18, written in ASD-STE100 Simplified Technical English.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: technical-manual page. Sticky chapter index on the left, one reading column (about 70ch) with figures that may run wider. Chapters carry manual reference codes.
+   Color: Anthropic-style orange on white, one look for all viewers. Orange = primary path; blue = secondary channel. */
+:root {
+  --paper: #ffffff;
+  --surface: #ffffff;
+  --ink: #141413;
+  --ink-2: #5e5d59;
+  --ink-3: #6f6e69;
+  --rule: #e8e6dc;
+  --accent: #d97757;
+  --accent-text: #b4532f;
+  --accent-ink: #141413;
+  --accent-soft: #fbeee8;
+  --hot: #3b6e9e;
+  --hot-soft: #eaf0f6;
+  --code-bg: #f7f6f2;
+  --warn: #b42318; --warn-bg: #fdecea;
+  --caut: #8a5a00; --caut-bg: #fbf3e0;
+  --note: #1b5ea6; --note-bg: #e9f0f8;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --s-0: 0.8125rem; --s-1: 0.9375rem; --s-2: 1.0625rem; --s-3: 1.375rem; --s-4: 1.875rem; --s-5: 2.75rem;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: var(--s-1); line-height: 1.6; }
+a { color: var(--accent-text); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+img { max-width: 100%; height: auto; display: block; }
+
+.shell { display: grid; grid-template-columns: 17rem minmax(0, 1fr); max-width: 84rem; margin: 0 auto; }
+.toc { position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; max-height: 100vh; overflow-y: auto; padding: 1.5rem 1rem 2rem 1.25rem; border-right: 1px solid var(--rule); font-size: var(--s-0); }
+.toc .brand { font-family: var(--f-display); font-weight: 700; font-size: 1.125rem; letter-spacing: 0.01em; margin: 0 0 0.25rem; }
+.toc .sub { color: var(--ink-3); margin: 0 0 1rem; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.125rem; }
+.toc a { display: grid; grid-template-columns: 2.5rem 1fr; gap: 0.25rem; padding: 0.3rem 0.5rem; border-radius: 4px; color: var(--ink-2); text-decoration: none; }
+.toc a:hover { background: var(--code-bg); color: var(--ink); }
+.toc a.on { background: var(--accent-soft); color: var(--ink); }
+.toc a span:first-child { font-family: var(--f-mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.toc-mobile { display: none; }
+
+main { min-width: 0; padding-inline: 2.5rem; padding-block: 2rem 5rem; }
+.col { max-width: 62rem; }
+.col > :not(.wide):not(.tbl):not(pre):not(.kv):not(.calc):not(.chap-head) { max-width: 46rem; }
+.wide { max-width: 62rem; }
+
+.title-page { border-bottom: 3px solid var(--ink); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+.eyebrow { font-family: var(--f-mono); font-size: var(--s-0); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); margin: 0 0 0.5rem; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: var(--s-5); line-height: 1.05; margin: 0 0 0.75rem; text-wrap: balance; letter-spacing: -0.01em; }
+.lede { font-size: var(--s-2); color: var(--ink-2); max-width: 40rem; margin: 0 0 1.25rem; }
+.meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0; border: 1px solid var(--rule); background: var(--surface); margin: 0; }
+.meta div { padding: 0.6rem 0.8rem; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); min-width: 0; }
+.meta dt { font-family: var(--f-mono); font-size: 0.6875rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.meta dd { margin: 0.1rem 0 0; font-weight: 500; overflow-wrap: anywhere; }
+
+.title-page + section.chapter { border-top: 0; margin-top: 0; padding-top: 0.5rem; }
+section.chapter { padding-top: 2.5rem; margin-top: 2.5rem; border-top: 1px solid var(--rule); scroll-margin-top: 1rem; }
+.chap-head { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.chap-code { font-family: var(--f-mono); font-size: var(--s-0); font-weight: 500; color: var(--accent-ink); background: var(--accent); padding: 0.15rem 0.5rem; border-radius: 3px; font-variant-numeric: tabular-nums; }
+h2 { font-family: var(--f-display); font-weight: 700; font-size: var(--s-4); line-height: 1.15; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--f-display); font-weight: 600; font-size: var(--s-3); line-height: 1.25; margin: 2.25rem 0 0.5rem; text-wrap: balance; scroll-margin-top: 1rem; }
+h3 .ref, h4 .ref { font-family: var(--f-mono); font-size: 0.8em; color: var(--ink-3); font-weight: 400; margin-right: 0.5rem; }
+h4 { font-family: var(--f-display); font-weight: 600; font-size: var(--s-2); margin: 1.5rem 0 0.25rem; }
+p { margin: 0 0 0.85rem; }
+.chap-intro { font-size: var(--s-2); color: var(--ink-2); }
+ul, ol { padding-left: 1.25rem; margin: 0 0 0.9rem; }
+li { margin: 0.2rem 0; }
+strong { font-weight: 600; }
+code, kbd { font-family: var(--f-mono); font-size: 0.875em; background: var(--code-bg); padding: 0.05rem 0.3rem; border-radius: 3px; overflow-wrap: anywhere; }
+pre { font-family: var(--f-mono); font-size: 0.8125rem; line-height: 1.55; background: var(--code-bg); border: 1px solid var(--rule); border-left: 3px solid var(--accent); padding: 0.9rem 1rem; margin: 0 0 1rem; overflow-x: auto; border-radius: 0 4px 4px 0; tab-size: 2; }
+pre code { background: none; padding: 0; font-size: inherit; overflow-wrap: normal; }
+pre .c { color: var(--ink-3); }
+pre .k { color: var(--accent-text); }
+pre .v { color: var(--hot); }
+.codecap { font-family: var(--f-mono); font-size: 0.75rem; color: var(--ink-3); margin: 0 0 0.25rem; }
+
+.callout { border: 1px solid; border-left-width: 4px; padding: 0.7rem 0.9rem; margin: 1rem 0; border-radius: 0 4px 4px 0; }
+.callout > b:first-child { display: block; font-family: var(--f-mono); font-size: 0.75rem; letter-spacing: 0.1em; margin-bottom: 0.2rem; }
+.callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+.warning { border-color: var(--warn); background: var(--warn-bg); } .warning > b:first-child { color: var(--warn); }
+.caution { border-color: var(--caut); background: var(--caut-bg); } .caution > b:first-child { color: var(--caut); }
+.note { border-color: var(--note); background: var(--note-bg); } .note > b:first-child { color: var(--note); }
+
+.tbl { overflow-x: auto; margin: 0 0 1.25rem; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: var(--s-0); font-variant-numeric: tabular-nums; }
+th, td { text-align: left; vertical-align: top; padding: 0.5rem 0.65rem; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--f-mono); font-weight: 500; font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); background: var(--code-bg); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; }
+
+figure { margin: 1.5rem 0; }
+figure.diagram { background: var(--surface); border: 1px solid var(--rule); padding: 1rem; color: var(--ink); }
+figure.diagram { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+figure.diagram svg { width: 100%; height: auto; display: block; overflow: visible; }
+figure.diagram figcaption { position: sticky; left: 0; }
+figure.diagram.scrolls::before { content: "Swipe sideways to see all of the diagram \2192"; display: block; position: sticky; left: 0; font-family: var(--f-mono); font-size: 0.6875rem; color: var(--accent-text); margin-bottom: 0.5rem; }
+figure.photo img { border: 1px solid var(--rule); }
+figure.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.75rem; }
+figure.pair figcaption { grid-column: 1 / -1; }
+figcaption { font-size: var(--s-0); color: var(--ink-2); margin-top: 0.6rem; max-width: 46rem; }
+figcaption b { font-family: var(--f-mono); font-weight: 500; color: var(--ink); margin-right: 0.35rem; }
+
+/* SVG diagram vocabulary */
+.d-box { fill: var(--surface); stroke: var(--ink-2); stroke-width: 1.25; }
+.d-soft { fill: var(--code-bg); stroke: var(--rule); stroke-width: 1; }
+.d-acc { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+.d-hot { fill: var(--hot-soft); stroke: var(--hot); stroke-width: 1.5; }
+.d-line { stroke: var(--ink-2); stroke-width: 1.25; fill: none; }
+.d-line-acc { stroke: var(--accent); stroke-width: 1.75; fill: none; }
+.d-line-hot { stroke: var(--hot); stroke-width: 1.75; fill: none; }
+.d-dash { stroke-dasharray: 5 4; }
+.d-zone { fill: var(--accent); fill-opacity: 0.1; stroke: var(--accent); stroke-width: 1.5; }
+.d-t { fill: var(--ink); font-family: var(--f-body); font-size: 13px; }
+.d-tb { fill: var(--ink); font-family: var(--f-body); font-size: 13px; font-weight: 600; }
+.d-ts { fill: var(--ink-2); font-family: var(--f-body); font-size: 11.5px; }
+.d-tm { fill: var(--ink-2); font-family: var(--f-mono); font-size: 11px; }
+.d-tacc { fill: var(--accent-text); font-family: var(--f-mono); font-size: 11px; }
+.d-thot { fill: var(--hot); font-family: var(--f-mono); font-size: 11px; }
+.d-halo { paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round; }
+.d-fill-ink { fill: var(--ink-2); }
+.d-fill-acc { fill: var(--accent); }
+.d-fill-hot { fill: var(--hot); }
+
+.steps { counter-reset: step; list-style: none; padding: 0; }
+.steps > li { counter-increment: step; position: relative; padding-left: 2.5rem; margin: 0 0 0.75rem; }
+.steps > li::before { content: counter(step); position: absolute; left: 0; top: 0.05rem; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; font-family: var(--f-mono); font-size: 0.8125rem; border: 1.5px solid var(--accent); color: var(--accent-text); border-radius: 50%; }
+
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.75rem; margin: 1rem 0 1.25rem; }
+.kv > div { background: var(--surface); border: 1px solid var(--rule); padding: 0.75rem 0.9rem; min-width: 0; }
+.kv h4 { margin: 0 0 0.25rem; font-size: var(--s-1); }
+.kv p { margin: 0; font-size: var(--s-0); color: var(--ink-2); }
+.kv .tag { font-family: var(--f-mono); font-size: 0.6875rem; color: var(--accent-text); letter-spacing: 0.05em; text-transform: uppercase; }
+
+details.ref-tree { background: var(--surface); border: 1px solid var(--rule); margin: 0 0 0.5rem; }
+details.ref-tree > summary { cursor: pointer; padding: 0.55rem 0.8rem; font-family: var(--f-mono); font-size: 0.8125rem; list-style: none; display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
+details.ref-tree > summary::-webkit-details-marker { display: none; }
+details.ref-tree > summary::before { content: "+"; color: var(--accent-text); width: 0.75rem; }
+details.ref-tree[open] > summary::before { content: "\2212"; }
+details.ref-tree > summary span { font-family: var(--f-body); color: var(--ink-2); font-size: var(--s-0); }
+details.ref-tree > div { padding: 0 0.9rem 0.6rem 2.3rem; font-size: var(--s-0); }
+
+.calc { background: var(--surface); border: 1px solid var(--rule); border-top: 3px solid var(--accent); padding: 1rem; margin: 1rem 0 1.5rem; display: grid; gap: 0.75rem; }
+.calc .row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+.calc label { display: grid; gap: 0.2rem; font-size: var(--s-0); color: var(--ink-2); flex: 1 1 8rem; }
+.calc input, .calc select { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); padding: 0.4rem 0.5rem; border-radius: 3px; width: 100%; }
+.calc output { font-family: var(--f-mono); font-size: var(--s-2); }
+.calc output b { color: var(--accent-text); font-size: var(--s-3); }
+
+.ste-badge { display: inline-flex; gap: 0.4rem; align-items: center; font-family: var(--f-mono); font-size: 0.75rem; border: 1px solid var(--rule); padding: 0.15rem 0.5rem; border-radius: 999px; color: var(--ink-2); background: var(--surface); }
+footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 3px solid var(--ink); font-size: var(--s-0); color: var(--ink-2); }
+
+@media (max-width: 960px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .toc { display: none; }
+  .toc-mobile { display: block; background: var(--surface); border: 1px solid var(--rule); margin-bottom: 1.5rem; }
+  .toc-mobile summary { padding: 0.6rem 0.8rem; cursor: pointer; font-family: var(--f-mono); font-size: var(--s-0); }
+  .toc-mobile ol { margin: 0; padding: 0 0.8rem 0.8rem 2rem; font-size: var(--s-0); }
+  main { padding-inline: 16px; padding-block: 1.25rem 4rem; }
+  h1 { font-size: 2.1rem; }
+  h2 { font-size: 1.6rem; }
+  figure.diagram { padding: 0.75rem; }
+  .tbl table { min-width: 34rem; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="Chapters">
+  <p class="brand">Custom Model Pipeline</p>
+  <p class="sub">Design proposal &middot; works with Frigate 0.18</p>
+  <ol id="toc-list"></ol>
+</nav>
+<main>
+
+<header class="title-page wide" id="top">
+  <p class="eyebrow">Design proposal &middot; works with Frigate 0.18</p>
+  <h1>Custom Model Pipeline</h1>
+  <p class="lede">This proposal shows how to build a self-service system that lets customers teach new object classes to their camera AI. Customers give images. The system labels them, fine-tunes a model, tests it and installs it on their Frigate system. The proposal also answers one question: should you use the Frigate source code from GitHub or the Docker image?</p>
+  <dl class="meta">
+    <div><dt>Target</dt><dd>Frigate NVR 0.18.1 (stable), unchanged Docker image</dd></div>
+    <div><dt>Scope</dt><dd>New classes, new sub-classes, training, testing, delivery, customer app</dd></div>
+    <div><dt>Language</dt><dd>ASD-STE100 Simplified Technical English (approx. 90%)</dd></div>
+    <div><dt>Status</dt><dd>Proposal. Not legal advice. Not made or approved by Frigate, Inc.</dd></div>
+  </dl>
+  <details class="toc-mobile"><summary>Chapters</summary><ol id="toc-list-m"></ol></details>
+</header>
+
+<section class="chapter col" id="c00" data-code="00" data-title="Short answer">
+  <div class="chap-head"><span class="chap-code">00</span><h2>Short answer</h2></div>
+  <div class="kv">
+    <div><span class="tag">Decision 1</span><h4>Use the Docker image</h4><p>Run the unchanged Frigate image at each customer site. Do not fork Frigate. Put your code in separate containers that talk to Frigate through its API and its files.</p></div>
+    <div><span class="tag">Decision 2</span><h4>Two layers, not one</h4><p>Use the classification layer that Frigate 0.18 already has for sub-classes. Fine-tune the detector only for object types that the base model cannot find.</p></div>
+    <div><span class="tag">Decision 3</span><h4>Apache-2.0 models</h4><p>Train RF-DETR (Nano, Small, Medium), D-FINE or YOLOX. Their licenses permit a commercial service. Do not use Frigate+ models or their API.</p></div>
+  </div>
+  <p>Use the GitHub source code only to read how Frigate works and to run compatibility tests. If you change Frigate itself, you must rebuild and test your fork for each Frigate release. You also must rename the fork if you distribute it. A separate service avoids both problems.</p>
+  <div class="callout warning"><b>WARNING</b><p>Do not use the name "Frigate" or "Frigate+" in the name of your product, app or domain. The Frigate trademark policy prohibits this for commercial products. You can say that your product is "compatible with Frigate" or "works with Frigate NVR".</p></div>
+  <div class="callout note"><b>NOTE</b><p>"Free for the customer" does not mean "free to operate". Each training run uses GPU time, and you must store images and models. Chapter 08 shows a mode where training runs on the customer's own GPU. In that mode, you pay almost no compute cost and the images stay at the customer site.</p></div>
+</section>
+
+<section class="chapter col" id="c01" data-code="01" data-title="System overview">
+  <div class="chap-head"><span class="chap-code">01</span><h2>System overview</h2></div>
+  <p class="chap-intro">The system has three parts. The <strong>site</strong> is the customer's Frigate computer with one extra container, the model agent. The <strong>platform</strong> is your service that labels, trains and tests models. The <strong>app</strong> is where the customer adds classes and approves results.</p>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 960 430" role="img" aria-label="System overview. At the customer site, the unchanged Frigate container and a model agent container share the config and media volumes; the agent calls the Frigate API on the internal Docker network. The agent opens outbound HTTPS to the platform only. The platform has an API, object storage, auto-labeling, a labeling tool, a GPU training queue, an evaluator and a model registry. The customer app talks to the platform API.">
+      <defs>
+        <marker id="b01" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-ink"/></marker>
+        <marker id="b01a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-acc"/></marker>
+      </defs>
+      <!-- site -->
+      <rect x="10" y="30" width="320" height="380" rx="6" class="d-soft"/>
+      <text x="24" y="52" class="d-tb">CUSTOMER SITE</text>
+      <rect x="30" y="70" width="280" height="96" rx="4" class="d-box"/>
+      <text x="44" y="92" class="d-tb">Frigate (stock image)</text>
+      <text x="44" y="112" class="d-ts">cameras, detect, record, review</text>
+      <text x="44" y="128" class="d-ts">built-in object classification</text>
+      <text x="44" y="150" class="d-tm">API :5000 (internal network only)</text>
+      <rect x="30" y="250" width="280" height="110" rx="4" class="d-acc"/>
+      <text x="44" y="272" class="d-tb">Model agent (your container)</text>
+      <text x="44" y="292" class="d-ts">collect images, upload, download models,</text>
+      <text x="44" y="308" class="d-ts">verify, install, watch, roll back</text>
+      <text x="44" y="330" class="d-tm">outbound HTTPS only</text>
+      <text x="44" y="346" class="d-tm">optional: local GPU trainer</text>
+      <path d="M120 250 L120 166" class="d-line" marker-end="url(#b01)"/>
+      <text x="128" y="200" class="d-tm">REST API</text>
+      <path d="M220 166 L220 250" class="d-line d-dash" marker-end="url(#b01)"/>
+      <text x="228" y="200" class="d-tm">shared volumes</text>
+      <text x="228" y="214" class="d-ts">/config/model_cache</text>
+      <text x="228" y="228" class="d-ts">/media/frigate/clips</text>
+      <text x="24" y="398" class="d-ts">Video and live frames never leave the site.</text>
+      <!-- platform -->
+      <rect x="400" y="30" width="400" height="380" rx="6" class="d-acc"/>
+      <text x="414" y="52" class="d-tb">PLATFORM (your service)</text>
+      <rect x="420" y="66" width="170" height="44" rx="3" class="d-box"/><text x="505" y="86" text-anchor="middle" class="d-t">Platform API</text><text x="505" y="101" text-anchor="middle" class="d-ts">tenants, sites, jobs</text>
+      <rect x="610" y="66" width="170" height="44" rx="3" class="d-box"/><text x="695" y="86" text-anchor="middle" class="d-t">Object storage</text><text x="695" y="101" text-anchor="middle" class="d-ts">images, datasets, models</text>
+      <rect x="420" y="128" width="170" height="44" rx="3" class="d-box"/><text x="505" y="148" text-anchor="middle" class="d-t">Auto-label</text><text x="505" y="163" text-anchor="middle" class="d-ts">open-vocabulary model</text>
+      <rect x="610" y="128" width="170" height="44" rx="3" class="d-box"/><text x="695" y="148" text-anchor="middle" class="d-t">Labeling tool</text><text x="695" y="163" text-anchor="middle" class="d-ts">human verifies boxes</text>
+      <rect x="420" y="190" width="170" height="44" rx="3" class="d-hot"/><text x="505" y="210" text-anchor="middle" class="d-t">Training queue</text><text x="505" y="225" text-anchor="middle" class="d-ts">GPU workers</text>
+      <rect x="610" y="190" width="170" height="44" rx="3" class="d-box"/><text x="695" y="210" text-anchor="middle" class="d-t">Evaluator</text><text x="695" y="225" text-anchor="middle" class="d-ts">quality gates</text>
+      <rect x="420" y="252" width="360" height="44" rx="3" class="d-box"/><text x="600" y="272" text-anchor="middle" class="d-t">Model registry</text><text x="600" y="287" text-anchor="middle" class="d-ts">versions, hardware builds, signatures, release channel</text>
+      <rect x="420" y="314" width="360" height="44" rx="3" class="d-soft"/><text x="600" y="334" text-anchor="middle" class="d-t">Metadata database (PostgreSQL)</text><text x="600" y="349" text-anchor="middle" class="d-ts">classes, labels, dataset versions, metrics</text>
+      <path d="M590 150 L610 150" class="d-line" marker-end="url(#b01)"/>
+      <path d="M590 212 L610 212" class="d-line" marker-end="url(#b01)"/>
+      <path d="M695 234 L695 252" class="d-line" marker-end="url(#b01)"/>
+      <!-- app -->
+      <rect x="850" y="66" width="100" height="120" rx="6" class="d-box"/>
+      <text x="900" y="90" text-anchor="middle" class="d-tb">Customer</text>
+      <text x="900" y="106" text-anchor="middle" class="d-tb">app</text>
+      <text x="900" y="130" text-anchor="middle" class="d-ts">add class</text>
+      <text x="900" y="146" text-anchor="middle" class="d-ts">verify labels</text>
+      <text x="900" y="162" text-anchor="middle" class="d-ts">approve model</text>
+      <path d="M850 100 L780 92" class="d-line" marker-end="url(#b01)"/>
+      <!-- agent to platform -->
+      <path d="M310 290 C 360 290, 370 100, 420 90" class="d-line-acc" marker-end="url(#b01a)"/>
+      <text x="336" y="180" class="d-tacc d-halo">upload images</text>
+      <path d="M420 274 L310 320" class="d-line-acc" marker-end="url(#b01a)"/>
+      <text x="336" y="314" class="d-tacc d-halo">signed model</text>
+    </svg>
+    <figcaption><b>Fig. 01-1</b>The recommended design. Frigate stays unchanged. The model agent is the only new part at the site. It connects out to the platform, so the customer does not open ports to the internet.</figcaption>
+  </figure>
+</section>
+
+<section class="chapter col" id="c02" data-code="02" data-title="What to build">
+  <div class="chap-head"><span class="chap-code">02</span><h2>What to build, and what Frigate already has</h2></div>
+  <p class="chap-intro">Frigate+ is a paid service. It collects images from Frigate, helps users label them, trains a detection model and sends the model back. You can build the same steps with your own tools. Some steps already exist in Frigate 0.18 at no cost.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Frigate+ step</th><th>Your component</th><th>Already in Frigate 0.18?</th></tr></thead>
+    <tbody>
+      <tr><td>Submit snapshots from Explore</td><td>Model agent reads <code>/api/events</code> and <code>/api/events/&lt;id&gt;/snapshot-clean.webp</code>. The app also accepts uploads.</td><td>API yes. A "send" button in the Frigate UI no (it is for Frigate+ only).</td></tr>
+      <tr><td>AI suggested labels</td><td>Auto-label service: current model + open-vocabulary detector</td><td>No</td></tr>
+      <tr><td>Annotate and verify</td><td>Labeling tool (CVAT or Label Studio) inside your app</td><td>No</td></tr>
+      <tr><td>Train a detection model</td><td>GPU training queue</td><td>No</td></tr>
+      <tr><td>Train a sub-class (for example "delivery person")</td><td>Frigate built-in object classification</td><td><strong>Yes</strong>: MobileNetV2, trained on the site CPU in 1–3 minutes</td></tr>
+      <tr><td>Train a state (for example "gate open")</td><td>Frigate built-in state classification</td><td><strong>Yes</strong></td></tr>
+      <tr><td>Recognize faces and plates</td><td>Frigate face recognition and LPR</td><td><strong>Yes</strong></td></tr>
+      <tr><td>Download the model (<code>plus://</code>)</td><td>Model agent writes the file and sets <code>model.path</code></td><td>Custom <code>model.path</code> yes</td></tr>
+      <tr><td>Suggested score thresholds</td><td>Evaluator calculates <code>min_score</code> and <code>threshold</code> for each class</td><td>No</td></tr>
+      <tr><td>Builds for many detectors</td><td>Export and conversion step</td><td>Frigate converts ONNX for Rockchip itself</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout caution"><b>CAUTION</b><p>Do not copy Frigate+ base models, and do not imitate the Frigate+ API (<code>api.frigate.video</code>). Those models and that service belong to Frigate, Inc. Build your models from public checkpoints with permissive licenses (chapter 09).</p></div>
+</section>
+
+<section class="chapter col" id="c03" data-code="03" data-title="Two learning layers">
+  <div class="chap-head"><span class="chap-code">03</span><h2>Two learning layers</h2></div>
+  <p class="chap-intro">A "new class" can mean two different things. The correct layer depends on one question: can the base detector already find the object?</p>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 900 330" role="img" aria-label="Decision: if the base detector already finds the object type and the customer needs a sub-type, identity or state, use the classification layer, which is built into Frigate, trains on the site CPU in minutes and needs about 20 to 50 crops per class. If the base detector does not find the object type, use the detector layer, which fine-tunes the detection model on a GPU in hours and needs hundreds of labeled boxes.">
+      <defs><marker id="b03" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-ink"/></marker></defs>
+      <rect x="20" y="20" width="250" height="56" rx="4" class="d-box"/><text x="145" y="44" text-anchor="middle" class="d-tb">Customer wants a new class</text><text x="145" y="62" text-anchor="middle" class="d-ts">for example "forklift" or "my dog"</text>
+      <path d="M270 48 L320 48" class="d-line" marker-end="url(#b03)"/>
+      <rect x="320" y="20" width="260" height="56" rx="4" class="d-soft"/><text x="450" y="42" text-anchor="middle" class="d-t">Does the base detector already</text><text x="450" y="60" text-anchor="middle" class="d-t">find this type of object?</text>
+      <path d="M450 76 L450 110 L220 110 L220 140" class="d-line" marker-end="url(#b03)"/><text x="330" y="104" text-anchor="middle" class="d-tm">yes (dog → "my dog")</text>
+      <path d="M450 76 L450 110 L680 110 L680 140" class="d-line" marker-end="url(#b03)"/><text x="570" y="104" text-anchor="middle" class="d-tm">no (forklift)</text>
+      <rect x="40" y="140" width="360" height="170" rx="6" class="d-acc"/>
+      <text x="56" y="164" class="d-tb">CLASSIFICATION LAYER</text>
+      <text x="56" y="186" class="d-ts">A second model looks at the object crop.</text>
+      <text x="56" y="206" class="d-ts">• Built into Frigate 0.18 (object or state)</text>
+      <text x="56" y="224" class="d-ts">• Result: sub_label or attribute</text>
+      <text x="56" y="242" class="d-ts">• Trains on the site CPU in 1–3 minutes</text>
+      <text x="56" y="260" class="d-ts">• Needs about 20–50 good crops per class</text>
+      <text x="56" y="278" class="d-ts">• No GPU, no cloud, no new detector</text>
+      <text x="56" y="298" class="d-tacc">automate it with the agent (05.3)</text>
+      <rect x="500" y="140" width="360" height="170" rx="6" class="d-hot"/>
+      <text x="516" y="164" class="d-tb">DETECTOR LAYER</text>
+      <text x="516" y="186" class="d-ts">The detector learns a new label.</text>
+      <text x="516" y="206" class="d-ts">• Fine-tune RF-DETR, D-FINE or YOLOX</text>
+      <text x="516" y="224" class="d-ts">• Result: a new label in objects.track</text>
+      <text x="516" y="242" class="d-ts">• Trains on a GPU in about 1–6 hours</text>
+      <text x="516" y="260" class="d-ts">• Needs hundreds of labeled boxes</text>
+      <text x="516" y="278" class="d-ts">• Every object in every image labeled</text>
+      <text x="516" y="298" class="d-thot">the platform pipeline (06)</text>
+    </svg>
+    <figcaption><b>Fig. 03-1</b>Select the layer first. Most customer requests ("is this my dog?", "is this a delivery driver?") need only the classification layer. The 1–3 minute training time comes from the Frigate documentation. The image counts and the detector training time are planning estimates. Measure them on your own data.</figcaption>
+  </figure>
+  <p>The classification layer is the "class layer on top of Frigate" that you asked about. It already exists in Frigate 0.18, so you do not have to write it. Your work is to automate it: collect crops, sort them into classes and start training through the API.</p>
+  <p>The detector layer is the part that Frigate+ sells. You must build it yourself. It is the main subject of chapters 06 and 07.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Request from the customer</th><th>Layer</th><th>Frigate output</th></tr></thead>
+    <tbody>
+      <tr><td>"Tell me when it is my dog, not the neighbor's dog"</td><td>Classification (object, sub_label)</td><td><code>dog</code> with sub label <code>Rex</code></td></tr>
+      <tr><td>"Mark persons who wear a helmet"</td><td>Classification (object, attribute)</td><td><code>person</code> with attribute <code>helmet: yes</code></td></tr>
+      <tr><td>"Tell me when the garage door is open"</td><td>Classification (state)</td><td>MQTT <code>frigate/&lt;cam&gt;/classification/garage_door</code></td></tr>
+      <tr><td>"Detect forklifts in my warehouse"</td><td>Detector</td><td>new label <code>forklift</code></td></tr>
+      <tr><td>"Detect my company's logo on vans"</td><td>Detector (attribute label)</td><td>new attribute label, set in <code>model.attributes_map</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter col" id="c04" data-code="04" data-title="Source code or Docker image">
+  <div class="chap-head"><span class="chap-code">04</span><h2>Source code or Docker image</h2></div>
+  <p class="chap-intro">You can put your new layer inside Frigate (a fork of the GitHub code) or next to Frigate (the stock image plus your own containers). The diagram shows what changes in each option.</p>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 900 330" role="img" aria-label="Comparison. Option A, fork: your code is inside a rebuilt Frigate image; each Frigate release needs a merge, a rebuild and a rename, and customers lose the official image. Option B, recommended: the stock Frigate image runs unchanged next to your model agent container; they connect through the Frigate API and two shared folders; Frigate updates are a normal docker pull.">
+      <defs><marker id="b04" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-ink"/></marker><marker id="b04s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="d-fill-ink"/></marker></defs>
+      <text x="20" y="24" class="d-tb">A  Fork the GitHub code</text>
+      <rect x="20" y="40" width="400" height="200" rx="6" class="d-soft"/>
+      <rect x="40" y="60" width="360" height="120" rx="4" class="d-box"/>
+      <text x="56" y="82" class="d-tb">your-nvr image (renamed fork)</text>
+      <text x="56" y="104" class="d-ts">Frigate code, changed in many files</text>
+      <rect x="56" y="118" width="328" height="44" rx="3" class="d-hot"/>
+      <text x="220" y="138" text-anchor="middle" class="d-t">your training client + UI changes</text>
+      <text x="220" y="154" text-anchor="middle" class="d-ts">mixed into frigate/ and web/</text>
+      <text x="40" y="204" class="d-ts">Each Frigate release → merge conflicts → rebuild →</text>
+      <text x="40" y="222" class="d-ts">test all hardware images → ship your own image</text>
+      <text x="20" y="266" class="d-thot">cost grows with each Frigate release</text>
+      <text x="20" y="284" class="d-ts">must rename and remove the logo (trademark policy)</text>
+      <text x="480" y="24" class="d-tb">B  Stock image + your containers (recommended)</text>
+      <rect x="480" y="40" width="400" height="200" rx="6" class="d-acc"/>
+      <rect x="500" y="60" width="150" height="120" rx="4" class="d-box"/>
+      <text x="575" y="84" text-anchor="middle" class="d-tb">Frigate</text>
+      <text x="575" y="104" text-anchor="middle" class="d-ts">official image</text>
+      <text x="575" y="120" text-anchor="middle" class="d-ts">no code change</text>
+      <text x="575" y="148" text-anchor="middle" class="d-tm">:stable</text>
+      <rect x="710" y="60" width="150" height="120" rx="4" class="d-box"/>
+      <text x="785" y="84" text-anchor="middle" class="d-tb">model agent</text>
+      <text x="785" y="104" text-anchor="middle" class="d-ts">your image</text>
+      <text x="785" y="120" text-anchor="middle" class="d-ts">your release cycle</text>
+      <path d="M710 100 L650 100" class="d-line" marker-end="url(#b04)"/><text x="680" y="92" text-anchor="middle" class="d-tm">API</text>
+      <path d="M650 140 L710 140" class="d-line d-dash" marker-start="url(#b04s)" marker-end="url(#b04)"/><text x="680" y="158" text-anchor="middle" class="d-tm">files</text>
+      <text x="500" y="204" class="d-ts">Frigate release → docker pull → run your</text>
+      <text x="500" y="222" class="d-ts">compatibility tests → done</text>
+      <text x="480" y="266" class="d-tacc">cost stays small; customers keep official updates</text>
+      <text x="480" y="284" class="d-ts">"compatible with Frigate" is permitted wording</text>
+    </svg>
+    <figcaption><b>Fig. 04-1</b>Option B keeps a clean line between Frigate and your product. The only contract between them is the Frigate HTTP API, the configuration file and the model files. Frigate already supports custom model files, so option B needs no Frigate code change.</figcaption>
+  </figure>
+  <div class="tbl"><table>
+    <thead><tr><th>Criterion</th><th>A: fork</th><th>B: stock image + agent</th></tr></thead>
+    <tbody>
+      <tr><td>Custom detection model</td><td>Possible</td><td>Possible with <code>model.path</code> and no code change</td></tr>
+      <tr><td>Custom classification</td><td>Possible</td><td>Possible with the built-in feature and the API</td></tr>
+      <tr><td>Button inside the Frigate UI</td><td>Possible</td><td>Not possible. Your app has its own UI.</td></tr>
+      <tr><td>Frigate updates</td><td>You merge and rebuild each release</td><td>Customer pulls the official image</td></tr>
+      <tr><td>Hardware images (Nvidia, ROCm, Rockchip …)</td><td>You build and test each one</td><td>Frigate builds them</td></tr>
+      <tr><td>Name and logo</td><td>Must rename the fork</td><td>Your own product name</td></tr>
+      <tr><td>Support load</td><td>You support all of Frigate</td><td>You support only your agent and models</td></tr>
+    </tbody>
+  </table></div>
+  <h3><span class="ref">04.1</span>Correct use of the GitHub code</h3>
+  <ul>
+    <li><strong>Read it.</strong> Use the source to learn the exact model input and output formats (<code>frigate/util/model.py</code>, <code>frigate/detectors/</code>).</li>
+    <li><strong>Test against it.</strong> Your CI pulls the Frigate image, loads your exported model and plays a test clip (chapter 12).</li>
+    <li><strong>Contribute to it.</strong> If you need a small, general change (for example a better hook for model updates), send a pull request to the Frigate project. Do not keep a private fork.</li>
+  </ul>
+</section>
+
+<section class="chapter col" id="c05" data-code="05" data-title="Site integration">
+  <div class="chap-head"><span class="chap-code">05</span><h2>Site integration: the model agent</h2></div>
+  <p class="chap-intro">The model agent is a small container that runs next to Frigate in the same Docker Compose project. It is the only new software at the customer site.</p>
+  <h3><span class="ref">05.1</span>Compose file</h3>
+<pre><code><span class="k">services</span>:
+  <span class="k">frigate</span>:
+    <span class="k">image</span>: <span class="v">ghcr.io/blakeblackshear/frigate:stable</span>   <span class="c"># unchanged</span>
+    <span class="k">volumes</span>:
+      - <span class="v">./config:/config</span>
+      - <span class="v">./media:/media/frigate</span>
+    <span class="c"># ... devices, shm_size, ports as usual</span>
+  <span class="k">model-agent</span>:
+    <span class="k">image</span>: <span class="v">ghcr.io/&lt;you&gt;/model-agent:1.0</span>
+    <span class="k">restart</span>: <span class="v">unless-stopped</span>
+    <span class="k">environment</span>:
+      <span class="k">FRIGATE_URL</span>: <span class="v">http://frigate:5000</span>          <span class="c"># internal port, same Docker network</span>
+      <span class="k">PLATFORM_URL</span>: <span class="v">https://api.&lt;your-domain&gt;</span>
+    <span class="k">secrets</span>: [<span class="v">site_token</span>]
+    <span class="k">volumes</span>:
+      - <span class="v">./config/model_cache/custom:/models</span>      <span class="c"># model files only</span>
+      - <span class="v">./config/config.yml:/frigate/config.yml:ro</span>
+      - <span class="v">./media/clips:/clips</span>                       <span class="c"># classification datasets</span>
+<span class="k">secrets</span>:
+  <span class="k">site_token</span>: { <span class="k">file</span>: <span class="v">./site_token.txt</span> }</code></pre>
+  <div class="callout warning"><b>WARNING</b><p>Port 5000 has no authentication. The agent must reach it only on the internal Docker network. Do not publish port 5000 on the host. The agent must make only outbound connections to the platform.</p></div>
+
+  <h3><span class="ref">05.2</span>Frigate API calls the agent uses</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Task</th><th>Frigate 0.18 endpoint</th></tr></thead>
+    <tbody>
+      <tr><td>Find candidate objects</td><td><code>GET /api/events?has_snapshot=1&amp;labels=…&amp;after=…</code></td></tr>
+      <tr><td>Get a clean image (no boxes)</td><td><code>GET /api/events/&lt;id&gt;/snapshot-clean.webp</code></td></tr>
+      <tr><td>Get a full frame at a time</td><td><code>GET /api/&lt;camera&gt;/recordings/&lt;frame_time&gt;/snapshot.png</code></td></tr>
+      <tr><td>Read the configuration</td><td><code>GET /api/config</code> (resolved) or <code>GET /api/config/raw</code> (file)</td></tr>
+      <tr><td>Save the configuration</td><td><code>POST /api/config/save?save_option=saveonly</code> (YAML body)</td></tr>
+      <tr><td>Restart Frigate</td><td><code>POST /api/restart</code></td></tr>
+      <tr><td>Check health after a change</td><td><code>GET /api/stats</code> (inference speed, skipped fps, detection fps)</td></tr>
+      <tr><td>Train a classification model</td><td><code>POST /api/classification/&lt;name&gt;/train</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><span class="ref">05.3</span>Automate the classification layer</h3>
+  <p>Frigate keeps each classification dataset in <code>/media/frigate/clips/&lt;model&gt;/dataset/&lt;class&gt;/</code>. The agent can put verified crops in these folders and then start training through the API. No Frigate change is necessary.</p>
+  <ol class="steps">
+    <li>Add the model to the Frigate configuration one time, for example <code>classification.custom.dog_id</code> with <code>object_config.objects: [dog]</code>.</li>
+    <li>The customer adds classes in your app ("Rex", "Bella", "none").</li>
+    <li>The agent gets crops of <code>dog</code> objects from the events API. The app shows them to the customer to sort.</li>
+    <li>The agent writes the sorted crops into <code>clips/dog_id/dataset/&lt;class&gt;/</code>.</li>
+    <li>The agent calls <code>POST /api/classification/dog_id/train</code>. Frigate trains on its CPU in 1–3 minutes.</li>
+    <li>Frigate sets the sub label on new dogs. MQTT <code>frigate/tracked_object_update</code> sends each result.</li>
+  </ol>
+<pre><code><span class="k">classification</span>:
+  <span class="k">custom</span>:
+    <span class="k">dog_id</span>:
+      <span class="k">threshold</span>: <span class="v">0.8</span>
+      <span class="k">object_config</span>:
+        <span class="k">objects</span>: [<span class="v">dog</span>]
+        <span class="k">classification_type</span>: <span class="v">sub_label</span>    <span class="c"># or attribute</span></code></pre>
+
+  <h3><span class="ref">05.4</span>Install a custom detection model</h3>
+  <p>Frigate loads any model file from <code>model.path</code>. A Frigate+ model is only a file in <code>/config/model_cache</code> plus a JSON file with its input settings. Your agent writes the same information directly into the <code>model</code> section.</p>
+<pre><code><span class="k">detectors</span>:
+  <span class="k">ov</span>:
+    <span class="k">type</span>: <span class="v">openvino</span>                    <span class="c"># or onnx for Nvidia / AMD</span>
+    <span class="k">device</span>: <span class="v">GPU</span>
+<span class="k">model</span>:
+  <span class="k">model_type</span>: <span class="v">rfdetr</span>                 <span class="c"># or dfine, yolox</span>
+  <span class="k">width</span>: <span class="v">320</span>
+  <span class="k">height</span>: <span class="v">320</span>
+  <span class="k">input_tensor</span>: <span class="v">nchw</span>
+  <span class="k">input_dtype</span>: <span class="v">float</span>
+  <span class="k">path</span>: <span class="v">/config/model_cache/custom/site42-v7.onnx</span>
+  <span class="k">labelmap_path</span>: <span class="v">/config/model_cache/custom/site42-v7.labels.txt</span>
+<span class="k">objects</span>:
+  <span class="k">track</span>: [<span class="v">person</span>, <span class="v">car</span>, <span class="v">forklift</span>]   <span class="c"># add the new label here</span>
+  <span class="k">filters</span>:
+    <span class="k">forklift</span>: { <span class="k">min_score</span>: <span class="v">0.55</span>, <span class="k">threshold</span>: <span class="v">0.75</span> }   <span class="c"># from the evaluator</span></code></pre>
+  <div class="callout caution"><b>CAUTION</b><p>The output layout of your exported model must agree with Frigate's decoder for that <code>model_type</code>. For example, Frigate's RF-DETR decoder ignores output class 0 and takes the class with the highest softmax score. Use the export method from the Frigate documentation, and test each export in the stock image before release.</p></div>
+</section>
+
+<section class="chapter col" id="c06" data-code="06" data-title="Training pipeline">
+  <div class="chap-head"><span class="chap-code">06</span><h2>Training pipeline (detector layer)</h2></div>
+  <p class="chap-intro">The pipeline changes customer images into a tested model file. Each stage has one input and one output. Each stage keeps its output, so you can repeat any later stage without the earlier ones.</p>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 960 330" role="img" aria-label="Twelve pipeline stages in two rows: collect, clean, auto-label, verify, freeze dataset version, train; then evaluate with a gate, export and convert, sign and register, deploy in stages, monitor, and select new images, which loops back to collect. A failed gate returns to verify with a report of weak classes.">
+      <defs><marker id="b06" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-ink"/></marker>
+      <marker id="b06a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-acc"/></marker></defs>
+      <g>
+        <rect x="20" y="40" width="130" height="70" rx="4" class="d-box"/><text x="85" y="64" text-anchor="middle" class="d-tb">1 Collect</text><text x="85" y="82" text-anchor="middle" class="d-ts">agent + uploads</text><text x="85" y="97" text-anchor="middle" class="d-ts">full frames + crops</text>
+        <rect x="175" y="40" width="130" height="70" rx="4" class="d-box"/><text x="240" y="64" text-anchor="middle" class="d-tb">2 Clean</text><text x="240" y="82" text-anchor="middle" class="d-ts">dedupe, blur,</text><text x="240" y="97" text-anchor="middle" class="d-ts">size, privacy</text>
+        <rect x="330" y="40" width="130" height="70" rx="4" class="d-box"/><text x="395" y="64" text-anchor="middle" class="d-tb">3 Auto-label</text><text x="395" y="82" text-anchor="middle" class="d-ts">current model +</text><text x="395" y="97" text-anchor="middle" class="d-ts">open-vocabulary</text>
+        <rect x="485" y="40" width="130" height="70" rx="4" class="d-acc"/><text x="550" y="64" text-anchor="middle" class="d-tb">4 Verify</text><text x="550" y="82" text-anchor="middle" class="d-ts">human checks</text><text x="550" y="97" text-anchor="middle" class="d-ts">every box</text>
+        <rect x="640" y="40" width="130" height="70" rx="4" class="d-box"/><text x="705" y="64" text-anchor="middle" class="d-tb">5 Freeze</text><text x="705" y="82" text-anchor="middle" class="d-ts">dataset version,</text><text x="705" y="97" text-anchor="middle" class="d-ts">train/val split</text>
+        <rect x="795" y="40" width="145" height="70" rx="4" class="d-hot"/><text x="867" y="64" text-anchor="middle" class="d-tb">6 Train</text><text x="867" y="82" text-anchor="middle" class="d-ts">fine-tune at</text><text x="867" y="97" text-anchor="middle" class="d-ts">320×320, GPU</text>
+        <rect x="795" y="200" width="145" height="70" rx="4" class="d-acc"/><text x="867" y="224" text-anchor="middle" class="d-tb">7 Evaluate</text><text x="867" y="242" text-anchor="middle" class="d-ts">gate: pass or</text><text x="867" y="257" text-anchor="middle" class="d-ts">stop</text>
+        <rect x="640" y="200" width="130" height="70" rx="4" class="d-box"/><text x="705" y="224" text-anchor="middle" class="d-tb">8 Export</text><text x="705" y="242" text-anchor="middle" class="d-ts">ONNX + builds</text><text x="705" y="257" text-anchor="middle" class="d-ts">per detector</text>
+        <rect x="485" y="200" width="130" height="70" rx="4" class="d-box"/><text x="550" y="224" text-anchor="middle" class="d-tb">9 Register</text><text x="550" y="242" text-anchor="middle" class="d-ts">sign, version,</text><text x="550" y="257" text-anchor="middle" class="d-ts">thresholds</text>
+        <rect x="330" y="200" width="130" height="70" rx="4" class="d-box"/><text x="395" y="224" text-anchor="middle" class="d-tb">10 Deploy</text><text x="395" y="242" text-anchor="middle" class="d-ts">customer approves,</text><text x="395" y="257" text-anchor="middle" class="d-ts">agent installs</text>
+        <rect x="175" y="200" width="130" height="70" rx="4" class="d-box"/><text x="240" y="224" text-anchor="middle" class="d-tb">11 Monitor</text><text x="240" y="242" text-anchor="middle" class="d-ts">speed, skipped</text><text x="240" y="257" text-anchor="middle" class="d-ts">fps, FP reports</text>
+        <rect x="20" y="200" width="130" height="70" rx="4" class="d-box"/><text x="85" y="224" text-anchor="middle" class="d-tb">12 Select</text><text x="85" y="242" text-anchor="middle" class="d-ts">uncertain and</text><text x="85" y="257" text-anchor="middle" class="d-ts">wrong results</text>
+      </g>
+      <g>
+        <path d="M150 75 L175 75" class="d-line" marker-end="url(#b06)"/><path d="M305 75 L330 75" class="d-line" marker-end="url(#b06)"/><path d="M460 75 L485 75" class="d-line" marker-end="url(#b06)"/><path d="M615 75 L640 75" class="d-line" marker-end="url(#b06)"/><path d="M770 75 L795 75" class="d-line" marker-end="url(#b06)"/>
+        <path d="M867 110 L867 200" class="d-line" marker-end="url(#b06)"/>
+        <path d="M795 235 L770 235" class="d-line" marker-end="url(#b06)"/><path d="M640 235 L615 235" class="d-line" marker-end="url(#b06)"/><path d="M485 235 L460 235" class="d-line" marker-end="url(#b06)"/><path d="M330 235 L305 235" class="d-line" marker-end="url(#b06)"/><path d="M175 235 L150 235" class="d-line" marker-end="url(#b06)"/>
+        <path d="M85 200 L85 110" class="d-line-acc" marker-end="url(#b06a)"/>
+        <text x="93" y="160" class="d-tacc">active learning loop</text>
+        <path d="M867 270 V300 H472 V155 H550 V110" class="d-line-hot d-dash" marker-end="url(#b06)"/>
+        <text x="710" y="316" text-anchor="middle" class="d-thot">gate fails → report weak classes → more data or fix labels</text>
+      </g>
+    </svg>
+    <figcaption><b>Fig. 06-1</b>The twelve stages. The loop is the important part. The first model is never the best model. Each loop adds the images where the model was uncertain or wrong.</figcaption>
+  </figure>
+
+  <h3><span class="ref">06.1</span>Collect and select</h3>
+  <ul>
+    <li><strong>Sources.</strong> The agent gets snapshots and full frames through the Frigate API. The customer also uploads photos in the app.</li>
+    <li><strong>Uncertain objects.</strong> Select events with a top score between <code>min_score</code> and <code>threshold</code>. The model is not sure about these. They teach it the most.</li>
+    <li><strong>Wrong results.</strong> The customer marks false positives in the app. Keep them as negative examples. Frigate+ advises about 80% true positives and 20% false positives.</li>
+    <li><strong>Coverage.</strong> Take images from each camera, by day and by night, and in different weather.</li>
+  </ul>
+
+  <h3><span class="ref">06.2</span>Clean</h3>
+  <p>Remove near-identical frames. A tracked object makes many similar frames. Keep a small number of frames from each event. Remove images that are too blurred or too small. Apply privacy rules before upload, for example blur faces when the customer does not need face classes.</p>
+
+  <h3><span class="ref">06.3</span>Auto-label and verify</h3>
+  <p>Do not ask the customer to draw every box. First, the current model labels the classes that it knows. Then an open-vocabulary detector, which accepts a text prompt such as "forklift", proposes boxes for the new class. The customer only accepts, moves or deletes boxes in the labeling tool.</p>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 900 250" role="img" aria-label="Two labeled versions of the same warehouse image. Wrong: only the forklift is boxed, the person next to it is not; the model learns that persons are background and forgets the person class. Right: the forklift and the person are both boxed; the model learns forklift and keeps person.">
+      <text x="20" y="22" class="d-tm" style="fill:var(--warn)">WRONG: only the new class is labeled</text>
+      <rect x="20" y="34" width="400" height="190" rx="4" class="d-soft"/>
+      <rect x="60" y="100" width="150" height="100" rx="3" class="d-hot" style="fill-opacity:.25"/><text x="135" y="155" text-anchor="middle" class="d-t">forklift ✓</text>
+      <rect x="250" y="70" width="70" height="130" rx="3" class="d-box" style="stroke-dasharray:4 3"/><text x="285" y="140" text-anchor="middle" class="d-ts">person</text>
+      <text x="330" y="96" class="d-ts">no box →</text><text x="330" y="112" class="d-ts">"background"</text>
+      <text x="20" y="244" class="d-ts">The model learns that a person is background. Person recall drops.</text>
+      <text x="480" y="22" class="d-tacc">RIGHT: every object is labeled</text>
+      <rect x="480" y="34" width="400" height="190" rx="4" class="d-soft"/>
+      <rect x="520" y="100" width="150" height="100" rx="3" class="d-acc"/><text x="595" y="155" text-anchor="middle" class="d-t">forklift ✓</text>
+      <rect x="705" y="70" width="80" height="130" rx="3" class="d-acc"/><text x="745" y="140" text-anchor="middle" class="d-t">person ✓</text>
+      <text x="480" y="244" class="d-ts">The model learns the new class and keeps the old ones.</text>
+    </svg>
+    <figcaption><b>Fig. 06-2</b>The most common training error. If an image has an object of a known class without a box, the model learns that this object is background. Auto-labeling of the known classes prevents this error. Frigate+ gives the same rule: label every object.</figcaption>
+  </figure>
+  <div class="callout warning"><b>WARNING</b><p>Auto-labels are suggestions. Train only on images that a person verified. Wrong labels make a bad model, and more training does not repair them.</p></div>
+
+  <h3><span class="ref">06.4</span>Freeze the dataset</h3>
+  <ul>
+    <li>Give each dataset a version number and store a manifest: image IDs, label IDs, class list, split.</li>
+    <li>Split by camera and by event, not by frame. If frames from one event are in the training set and in the validation set, the test result is too optimistic.</li>
+    <li>Keep a fixed validation set for each customer. Use the same set to compare each new model with the current model.</li>
+    <li>Add a replay set of public images for the base classes (person, car, …). This keeps the model good at the old classes.</li>
+  </ul>
+
+  <h3><span class="ref">06.5</span>Training recipe</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Item</th><th>Recommendation</th><th>Reason</th></tr></thead>
+    <tbody>
+      <tr><td>Architecture</td><td>RF-DETR Nano or Small; D-FINE S; YOLOX for NPUs</td><td>Apache-2.0 license, Frigate 0.18 decoders exist</td></tr>
+      <tr><td>Start weights</td><td>Public COCO checkpoint of the same model</td><td>Fine-tuning needs much less data than training from zero</td></tr>
+      <tr><td>Input size</td><td>320×320</td><td>Frigate sends 320 px regions. The Frigate docs recommend 320 for almost all users.</td></tr>
+      <tr><td>Training images</td><td>Square crops around objects (1.35× to 2× the object size), plus some full frames</td><td>This is the same kind of image that Frigate sends to the detector at runtime</td></tr>
+      <tr><td>Augmentation</td><td>Infrared grayscale, motion blur, JPEG noise, brightness</td><td>Security cameras have night mode and compression</td></tr>
+      <tr><td>Class list</td><td>Base classes that the customer uses + new classes</td><td>A smaller list is faster and has fewer false labels</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><span class="ref">06.6</span>Evaluation gate</h3>
+  <p>The evaluator decides whether a model can go to the customer. Use rules like these. Set the exact values from your own tests.</p>
+  <ol>
+    <li>Each new class reaches the agreed quality on the fixed validation set (for example, recall of 0.8 at precision 0.9).</li>
+    <li>No base class becomes worse than the current model by more than an agreed limit (for example, 2 points of mAP).</li>
+    <li>Inference time on the customer hardware stays inside the budget (chapter 10).</li>
+    <li>The exported file gives the same boxes in the stock Frigate image as in the training code.</li>
+  </ol>
+  <p>For each class, the evaluator also calculates suggested values for <code>min_score</code> and <code>threshold</code> from the precision-recall curve. The agent writes them into <code>objects.filters</code>.</p>
+</section>
+
+<section class="chapter col" id="c07" data-code="07" data-title="Model delivery">
+  <div class="chap-head"><span class="chap-code">07</span><h2>Model delivery and rollback</h2></div>
+  <p class="chap-intro">A bad model can stop a security system from seeing people. Thus the agent installs a model in steps, and it can always go back to the previous model.</p>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 960 260" role="img" aria-label="Rollout states on the site: available, downloaded and verified by checksum and signature, shadow tested on local saved clips, approved by the customer, installed by saving config and restarting Frigate in a maintenance window, watched for 24 hours, then kept. Any failure after install returns to the previous model and config.">
+      <defs><marker id="b07" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-ink"/></marker></defs>
+      <g>
+        <rect x="10" y="60" width="120" height="60" rx="30" class="d-soft"/><text x="70" y="86" text-anchor="middle" class="d-tb">available</text><text x="70" y="102" text-anchor="middle" class="d-ts">in registry</text>
+        <rect x="155" y="60" width="120" height="60" rx="30" class="d-box"/><text x="215" y="86" text-anchor="middle" class="d-tb">downloaded</text><text x="215" y="102" text-anchor="middle" class="d-ts">hash + signature</text>
+        <rect x="300" y="60" width="120" height="60" rx="30" class="d-box"/><text x="360" y="86" text-anchor="middle" class="d-tb">shadow test</text><text x="360" y="102" text-anchor="middle" class="d-ts">local clips</text>
+        <rect x="445" y="60" width="120" height="60" rx="30" class="d-box"/><text x="505" y="86" text-anchor="middle" class="d-tb">approved</text><text x="505" y="102" text-anchor="middle" class="d-ts">customer, in app</text>
+        <rect x="590" y="60" width="120" height="60" rx="30" class="d-acc"/><text x="650" y="86" text-anchor="middle" class="d-tb">installed</text><text x="650" y="102" text-anchor="middle" class="d-ts">config + restart</text>
+        <rect x="735" y="60" width="100" height="60" rx="30" class="d-acc"/><text x="785" y="86" text-anchor="middle" class="d-tb">watched</text><text x="785" y="102" text-anchor="middle" class="d-ts">24 h</text>
+        <rect x="860" y="60" width="90" height="60" rx="30" class="d-acc"/><text x="905" y="95" text-anchor="middle" class="d-tb">kept</text>
+      </g>
+      <path d="M130 90 L155 90" class="d-line" marker-end="url(#b07)"/><path d="M275 90 L300 90" class="d-line" marker-end="url(#b07)"/><path d="M420 90 L445 90" class="d-line" marker-end="url(#b07)"/><path d="M565 90 L590 90" class="d-line" marker-end="url(#b07)"/><path d="M710 90 L735 90" class="d-line" marker-end="url(#b07)"/><path d="M835 90 L860 90" class="d-line" marker-end="url(#b07)"/>
+      <rect x="590" y="180" width="245" height="56" rx="4" class="d-hot"/><text x="712" y="202" text-anchor="middle" class="d-tb">rolled back</text><text x="712" y="220" text-anchor="middle" class="d-ts">previous model file + previous YAML</text>
+      <path d="M650 120 L650 180" class="d-line-hot" marker-end="url(#b07)"/><text x="658" y="156" class="d-thot">start fails</text>
+      <path d="M785 120 L785 180" class="d-line-hot" marker-end="url(#b07)"/><text x="793" y="156" class="d-thot">health fails</text>
+      <path d="M215 120 L215 208 L300 208" class="d-line d-dash" marker-end="url(#b07)"/><text x="223" y="164" class="d-ts">bad hash or</text><text x="223" y="178" class="d-ts">signature</text>
+      <rect x="300" y="188" width="170" height="40" rx="20" class="d-soft"/><text x="385" y="213" text-anchor="middle" class="d-t">rejected, reported</text>
+      <text x="10" y="30" class="d-ts">Nothing changes in Frigate before "installed". All steps before it are safe to repeat.</text>
+    </svg>
+    <figcaption><b>Fig. 07-1</b>Rollout states at one site. The shadow test runs the new model on clips that the site already saved, without a change to the live Frigate. The customer sees the result and approves it in the app.</figcaption>
+  </figure>
+  <h3><span class="ref">07.1</span>Procedure: install a model (agent)</h3>
+  <ol class="steps">
+    <li>Download the model and its manifest to a temporary folder.</li>
+    <li>Verify the SHA-256 hash and the signature. If one fails, delete the files and report the error.</li>
+    <li>Run the shadow test on saved clips. Send the results to the app.</li>
+    <li>Wait for approval from the customer and for the maintenance window.</li>
+    <li>Make a copy of the current YAML file and the current model file.</li>
+    <li>Move the new files to <code>/config/model_cache/custom/</code>.</li>
+    <li>Change the <code>model</code> and <code>objects</code> sections. Save with <code>POST /api/config/save?save_option=saveonly</code>.</li>
+    <li>Restart Frigate with <code>POST /api/restart</code>.</li>
+    <li>Check <code>/api/stats</code> each minute for 30 minutes, then each hour for 24 hours.</li>
+    <li>If Frigate does not start, or the health check fails, restore the copy and restart.</li>
+  </ol>
+  <div class="tbl"><table>
+    <thead><tr><th>Health check</th><th>Source</th><th>Fail if</th></tr></thead>
+    <tbody>
+      <tr><td>Frigate runs</td><td><code>GET /api/version</code></td><td>no answer after 5 minutes</td></tr>
+      <tr><td>Detector speed</td><td><code>/api/stats</code> detectors inference_speed</td><td>more than the hardware budget</td></tr>
+      <tr><td>Frames skipped</td><td><code>/api/stats</code> cameras skipped_fps</td><td>more than zero for a long time</td></tr>
+      <tr><td>Detection rate</td><td>events per hour, compared with the same hours before</td><td>large drop in person or car events</td></tr>
+      <tr><td>Customer reports</td><td>false positives marked in the app</td><td>more than the agreed number</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter col" id="c08" data-code="08" data-title="Where training runs">
+  <div class="chap-head"><span class="chap-code">08</span><h2>Where training runs</h2></div>
+  <p class="chap-intro">Training needs a GPU. You can supply the GPU (cloud mode) or use the customer's GPU (local mode). Build the training worker as one container image, so the same code runs in both modes.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Item</th><th>Cloud mode</th><th>Local mode</th></tr></thead>
+    <tbody>
+      <tr><td>Where images go</td><td>Your object storage</td><td>Stay at the site</td></tr>
+      <tr><td>Who pays for the GPU</td><td>You</td><td>The customer (their own hardware)</td></tr>
+      <tr><td>Customer hardware</td><td>Any Frigate computer</td><td>Nvidia GPU with enough memory for training</td></tr>
+      <tr><td>Labeling</td><td>Your hosted labeling tool</td><td>Labeling tool in the app, images streamed from the site</td></tr>
+      <tr><td>Shared base model</td><td>Possible, with consent</td><td>Not possible</td></tr>
+      <tr><td>Best for</td><td>Small sites, Intel N100 or Coral users</td><td>Privacy-sensitive users, "no subscription" promise</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout note"><b>NOTE</b><p>Start with cloud mode for your first customers. It is easier to debug. Add local mode when the pipeline is stable. The evaluation gate and the model registry stay the same in both modes.</p></div>
+  <p><strong>Per-customer model or shared model.</strong> Frigate+ fine-tunes from a base model that was trained on images from all subscribers. You can do the same only if each customer agrees that you can use their images for all customers. Without that consent, fine-tune each customer's model from the public checkpoint and use only that customer's images.</p>
+</section>
+
+<section class="chapter col" id="c09" data-code="09" data-title="Licenses and privacy">
+  <div class="chap-head"><span class="chap-code">09</span><h2>Licenses, trademarks and privacy</h2></div>
+  <p class="chap-intro">A free service for customers is still a commercial product if you run it as a business. The licenses of the models, the datasets and the Frigate name apply to you.</p>
+  <h3><span class="ref">09.1</span>Model licenses</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Model family</th><th>License</th><th>Frigate 0.18 <code>model_type</code></th><th>Use in your service</th></tr></thead>
+    <tbody>
+      <tr><td>RF-DETR Nano, Small, Medium, Large</td><td>Apache-2.0</td><td><code>rfdetr</code></td><td><strong>Recommended</strong> for GPUs and Intel</td></tr>
+      <tr><td>RF-DETR XL, 2XL</td><td>PML 1.0 (not Apache)</td><td><code>rfdetr</code></td><td>Do not use without reading the license</td></tr>
+      <tr><td>D-FINE, DEIMv2</td><td>Apache-2.0</td><td><code>dfine</code></td><td><strong>Recommended</strong> (not on AMD ROCm)</td></tr>
+      <tr><td>YOLOX</td><td>Apache-2.0</td><td><code>yolox</code></td><td><strong>Recommended</strong> for NPUs (MemryX, Rockchip)</td></tr>
+      <tr><td>YOLOv9 (WongKinYiu)</td><td>GPL-3.0</td><td><code>yolo-generic</code></td><td>Only if you accept GPL obligations</td></tr>
+      <tr><td>Ultralytics YOLO (v8, 11 …)</td><td>AGPL-3.0</td><td><code>yolo-generic</code></td><td>Needs an enterprise license for a closed service</td></tr>
+      <tr><td>YOLO-NAS weights</td><td>Non-commercial</td><td><code>yolonas</code></td><td>Do not use</td></tr>
+      <tr><td>Frigate+ models</td><td>Proprietary</td><td><code>plus://</code></td><td>Do not copy or redistribute</td></tr>
+    </tbody>
+  </table></div>
+  <p>Auto-labeling tools also have licenses. Check each one before use. Many open-vocabulary detectors and labeling tools have permissive licenses, but some do not.</p>
+  <div class="callout warning"><b>WARNING</b><p>Public datasets have their own terms. For example, COCO images come from Flickr with different licenses for each image. Before you use a public dataset for a commercial model, read its terms. This proposal is not legal advice. Ask a lawyer before launch.</p></div>
+  <h3><span class="ref">09.2</span>Trademark</h3>
+  <ul>
+    <li>Do not put "Frigate" in your product, app or domain name.</li>
+    <li>Do not use the Frigate logo.</li>
+    <li>You can write "compatible with Frigate NVR" or "works with Frigate".</li>
+    <li>Do not say or show that Frigate, Inc. supports or approves your product.</li>
+  </ul>
+  <h3><span class="ref">09.3</span>Privacy</h3>
+  <p>Camera images show people, faces, number plates and homes. In most countries these are personal data. Follow the data protection law of each customer's country. Examples are the Digital Personal Data Protection Act 2023 in India and the GDPR in the EU.</p>
+  <ul>
+    <li>Get clear consent for each use of the images: training for that customer only, or training of a shared model.</li>
+    <li>Upload only the images that the customer selects. Never upload video streams.</li>
+    <li>Encrypt images in transit and at rest. Delete them when the customer asks or when the retention time ends.</li>
+    <li>Offer local mode for customers who must keep all images at their site.</li>
+  </ul>
+</section>
+
+<section class="chapter col" id="c10" data-code="10" data-title="Hardware targets">
+  <div class="chap-head"><span class="chap-code">10</span><h2>Hardware targets</h2></div>
+  <p class="chap-intro">Each detector type in Frigate needs a different model file. Support the easy targets first. Each new target needs its own conversion step and its own tests.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Frigate detector</th><th>Hardware</th><th>File from your pipeline</th><th>Phase</th></tr></thead>
+    <tbody>
+      <tr><td><code>openvino</code></td><td>Intel iGPU, Arc, NPU, Intel and AMD CPUs</td><td>ONNX (RF-DETR, D-FINE, YOLOX)</td><td>1</td></tr>
+      <tr><td><code>onnx</code></td><td>Nvidia (<code>-tensorrt</code> image), AMD (<code>-rocm</code>), Intel</td><td>ONNX. On ROCm, D-FINE is not supported.</td><td>1</td></tr>
+      <tr><td><code>rknn</code></td><td>Rockchip NPU</td><td>ONNX. Frigate converts it on the device with its own tool.</td><td>2</td></tr>
+      <tr><td><code>memryx</code></td><td>MemryX MX3</td><td>YOLOX compiled with the MemryX SDK</td><td>3</td></tr>
+      <tr><td><code>hailo8l</code></td><td>Hailo-8, Hailo-8L</td><td>.hef compiled with the vendor's compiler</td><td>3</td></tr>
+      <tr><td><code>edgetpu</code></td><td>Google Coral</td><td>int8 TFLite with special operations. RF-DETR and D-FINE cannot run on it.</td><td>not planned</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout caution"><b>CAUTION</b><p>A model that is fast on a GPU can be too slow on a small computer. RF-DETR Nano at 320 takes approximately 40 ms on an Intel NPU and approximately 90 ms on an AMD 9060XT with ROCm (Frigate hardware page). For each customer, record the hardware in the app and select a model size that fits the inference budget.</p></div>
+</section>
+
+<section class="chapter col" id="c11" data-code="11" data-title="Customer app">
+  <div class="chap-head"><span class="chap-code">11</span><h2>Customer app</h2></div>
+  <p class="chap-intro">The app is the only part that the customer uses directly. Keep it simple: one screen for each step of the loop.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Screen</th><th>Function</th></tr></thead>
+    <tbody>
+      <tr><td>Sites</td><td>Connect a Frigate site with a one-time code. Show agent status, Frigate version and detector hardware.</td></tr>
+      <tr><td>Classes</td><td>Add a class. The app asks questions and selects the layer (Fig. 03-1).</td></tr>
+      <tr><td>Inbox</td><td>Images that the agent selected. The customer accepts or rejects each one, or marks it as a false positive.</td></tr>
+      <tr><td>Label</td><td>Auto-labels shown as suggestions. The customer accepts, moves or deletes boxes, then verifies the image.</td></tr>
+      <tr><td>Train</td><td>Shows the count of verified images for each class. The Train button is active only when each class has enough data.</td></tr>
+      <tr><td>Results</td><td>Evaluation report: quality for each class, compared with the current model, sample images with errors.</td></tr>
+      <tr><td>Deploy</td><td>Approve a model, set the maintenance window, see the rollout state, roll back with one action.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Build the app on the platform API only. Do not connect the app directly to the customer's Frigate. Thus the customer does not have to open Frigate to the internet.</p>
+</section>
+
+<section class="chapter col" id="c12" data-code="12" data-title="Roadmap">
+  <div class="chap-head"><span class="chap-code">12</span><h2>Roadmap</h2></div>
+  <figure class="diagram wide">
+    <svg viewBox="0 0 900 220" role="img" aria-label="Four phases: phase 0 proof with one class done by hand; phase 1 classification layer automation and agent; phase 2 detector pipeline in cloud mode with ONNX targets; phase 3 local mode, more hardware, active learning.">
+      <defs><marker id="b12" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="d-fill-ink"/></marker></defs>
+      <g>
+        <rect x="10" y="30" width="200" height="160" rx="5" class="d-acc"/>
+        <text x="24" y="54" class="d-tb">Phase 0 · Proof</text>
+        <text x="24" y="78" class="d-ts">one new class, by hand</text>
+        <text x="24" y="98" class="d-ts">label, train, export ONNX</text>
+        <text x="24" y="118" class="d-ts">load in stock Frigate</text>
+        <text x="24" y="138" class="d-ts">test with a dummy camera</text>
+        <text x="24" y="172" class="d-tacc">exit: forklift detected</text>
+        <rect x="230" y="30" width="200" height="160" rx="5" class="d-box"/>
+        <text x="244" y="54" class="d-tb">Phase 1 · Agent</text>
+        <text x="244" y="78" class="d-ts">model agent container</text>
+        <text x="244" y="98" class="d-ts">classification layer</text>
+        <text x="244" y="118" class="d-ts">automation (05.3)</text>
+        <text x="244" y="138" class="d-ts">install + rollback</text>
+        <text x="244" y="172" class="d-tacc">exit: first users</text>
+        <rect x="450" y="30" width="200" height="160" rx="5" class="d-box"/>
+        <text x="464" y="54" class="d-tb">Phase 2 · Platform</text>
+        <text x="464" y="78" class="d-ts">auto-label + labeling</text>
+        <text x="464" y="98" class="d-ts">GPU training queue</text>
+        <text x="464" y="118" class="d-ts">evaluation gate, registry</text>
+        <text x="464" y="138" class="d-ts">openvino + onnx targets</text>
+        <text x="464" y="172" class="d-tacc">exit: self-service loop</text>
+        <rect x="670" y="30" width="220" height="160" rx="5" class="d-box"/>
+        <text x="684" y="54" class="d-tb">Phase 3 · Scale</text>
+        <text x="684" y="78" class="d-ts">local training mode</text>
+        <text x="684" y="98" class="d-ts">Rockchip, MemryX, Hailo</text>
+        <text x="684" y="118" class="d-ts">active learning selection</text>
+        <text x="684" y="138" class="d-ts">shared base (with consent)</text>
+        <text x="684" y="172" class="d-tacc">exit: many sites</text>
+      </g>
+      <path d="M210 110 L230 110" class="d-line" marker-end="url(#b12)"/>
+      <path d="M430 110 L450 110" class="d-line" marker-end="url(#b12)"/>
+      <path d="M650 110 L670 110" class="d-line" marker-end="url(#b12)"/>
+    </svg>
+    <figcaption><b>Fig. 12-1</b>Build in this sequence. Each phase gives something that works. Do not start the platform before the proof in phase 0 shows that your exported model works in the stock Frigate image.</figcaption>
+  </figure>
+  <h3><span class="ref">12.1</span>Procedure: phase 0 proof</h3>
+  <ol class="steps">
+    <li>Select one new class that the base model cannot detect, for example "forklift".</li>
+    <li>Collect 200–500 images from the target cameras. Include day, night and empty scenes. (This count is a starting estimate.)</li>
+    <li>Label every object in each image in CVAT or Label Studio. Export in COCO format.</li>
+    <li>Fine-tune RF-DETR Nano from the public checkpoint at 320×320 with the classes person, car and forklift.</li>
+    <li>Export to ONNX with the method that the Frigate documentation uses for RF-DETR.</li>
+    <li>Write the label file. Put both files in <code>/config/model_cache/custom/</code>.</li>
+    <li>Set the <code>model</code> section as in 05.4. Add <code>forklift</code> to <code>objects.track</code>.</li>
+    <li>Add a dummy camera that plays a test clip (Frigate Field Manual, chapter 12).</li>
+    <li>Look at the Debug view. Make sure that Frigate detects the forklift and still detects persons.</li>
+    <li>Write down the inference time from System &gt; Metrics.</li>
+  </ol>
+  <h3><span class="ref">12.2</span>Compatibility tests in CI</h3>
+  <p>Run these tests for each new model and for each new Frigate release:</p>
+  <ol>
+    <li>Pull <code>ghcr.io/blakeblackshear/frigate:stable</code>.</li>
+    <li>Validate the configuration with <code>python3 -u -m frigate --validate-config</code>.</li>
+    <li>Start Frigate with a dummy camera and a known clip.</li>
+    <li>Read <code>/api/events</code>. Compare the labels and the count with the expected result.</li>
+  </ol>
+  <h3><span class="ref">12.3</span>Your repository</h3>
+<pre><code>your-product/
+  agent/            <span class="c"># model agent container (Python)</span>
+    frigate_client.py   collector.py   installer.py   health.py
+  platform/
+    api/            <span class="c"># tenants, sites, jobs (FastAPI + PostgreSQL)</span>
+    autolabel/      <span class="c"># open-vocabulary suggestions</span>
+    trainer/        <span class="c"># one image for cloud and local mode</span>
+    evaluator/      <span class="c"># gates, thresholds, reports</span>
+    registry/       <span class="c"># versions, signatures, hardware builds</span>
+  app/              <span class="c"># web and mobile app</span>
+  compat-tests/     <span class="c"># CI against the stock Frigate image</span></code></pre>
+</section>
+
+<section class="chapter col" id="c13" data-code="13" data-title="Decisions and risks">
+  <div class="chap-head"><span class="chap-code">13</span><h2>Decisions and risks</h2></div>
+  <h3><span class="ref">13.1</span>Decisions you must make</h3>
+  <ol>
+    <li><strong>Hardware.</strong> Which detectors do your customers use? This sets the phase 1 targets.</li>
+    <li><strong>Training location.</strong> Cloud mode, local mode, or both?</li>
+    <li><strong>Data use.</strong> A model for each customer only, or a shared base model with consent?</li>
+    <li><strong>Business model.</strong> Who pays for GPU time, storage and support?</li>
+    <li><strong>Product name.</strong> A name without "Frigate".</li>
+  </ol>
+  <h3><span class="ref">13.2</span>Risks</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Risk</th><th>Effect</th><th>Control</th></tr></thead>
+    <tbody>
+      <tr><td>A new model misses persons</td><td>Security failure</td><td>Base-class gate (06.6), shadow test, 24-hour watch, automatic rollback</td></tr>
+      <tr><td>Wrong labels from users</td><td>Bad model</td><td>Verify step, review of low-agreement images, label quality report</td></tr>
+      <tr><td>Frigate changes its model formats</td><td>Model does not load</td><td>Compatibility tests on each Frigate release (12.2)</td></tr>
+      <tr><td>License problem</td><td>Legal risk</td><td>Only Apache-2.0 model families, dataset review, legal check before launch</td></tr>
+      <tr><td>Privacy breach</td><td>Legal risk, loss of trust</td><td>Consent, encryption, deletion, local mode</td></tr>
+      <tr><td>GPU cost grows with users</td><td>Service not sustainable</td><td>Local mode, data minimums before training, training limits for each site</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter col" id="cA" data-code="A" data-title="Sources">
+  <div class="chap-head"><span class="chap-code">A</span><h2>Sources</h2></div>
+  <ul>
+    <li>Frigate 0.18.1 source code: <code>frigate/detectors/detector_config.py</code> (custom and <code>plus://</code> models), <code>frigate/util/model.py</code> (RF-DETR and D-FINE decoders), <code>frigate/api/classification.py</code> (dataset and training API), <code>TRADEMARK.md</code>.</li>
+    <li>Frigate documentation: <a href="https://docs.frigate.video/">docs.frigate.video</a> (object detectors, custom classification, Frigate+, hardware).</li>
+    <li><a href="https://github.com/roboflow/rf-detr">RF-DETR repository</a> and <a href="https://roboflow.com/blog/rf-detr-is-free-to-use-commercially">RF-DETR license note</a></li>
+    <li><a href="https://github.com/Peterande/D-FINE/blob/master/LICENSE">D-FINE license</a> and <a href="https://github.com/Intellindust-AI-Lab/DEIMv2">DEIMv2 repository</a></li>
+    <li><a href="https://github.com/megvii-basedetection/yolox">YOLOX repository</a> and <a href="https://roboflow.com/model-licenses/yolov9">YOLOv9 license summary</a></li>
+    <li><a href="../frigate-explainer/">Frigate Field Manual</a>: the companion explainer in this repository.</li>
+  </ul>
+</section>
+
+<footer class="wide">
+  <p><strong>Custom Model Pipeline</strong> is a design proposal. It is not legal advice. Frigate&trade;, Frigate NVR&trade; and Frigate+&trade; are trademarks of Frigate, Inc. This proposal is not made, approved or supported by Frigate, Inc.</p>
+  <p>Facts about Frigate come from Frigate 0.18.1 (master branch, commit e912d08) and docs.frigate.video. License facts were checked on 7 October 2026. Licenses can change. Examine each license again before you ship. Text is in ASD-STE100 Simplified Technical English (approximately 90%).</p>
+  <p>Related: <a href="../frigate-explainer/">Frigate Field Manual</a> &middot; <a href="#top">Back to top</a></p>
+</footer>
+</main>
+</div>
+<script>
+(function () {
+  var chapters = Array.prototype.slice.call(document.querySelectorAll('section.chapter[data-code]'));
+  var lists = [document.getElementById('toc-list'), document.getElementById('toc-list-m')];
+  var links = [];
+  chapters.forEach(function (sec) {
+    lists.forEach(function (ol, i) {
+      if (!ol) return;
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.href = '#' + sec.id;
+      var code = document.createElement('span');
+      code.textContent = sec.getAttribute('data-code');
+      var name = document.createElement('span');
+      name.textContent = sec.getAttribute('data-title');
+      a.appendChild(code); a.appendChild(name);
+      li.appendChild(a); ol.appendChild(li);
+      if (i === 0) links.push(a);
+      if (i === 1) a.addEventListener('click', function () { var d = ol.closest('details'); if (d) d.open = false; });
+    });
+  });
+  if ('IntersectionObserver' in window && links.length) {
+    var current = null;
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          var idx = chapters.indexOf(e.target);
+          if (current) current.classList.remove('on');
+          current = links[idx];
+          if (current) current.classList.add('on');
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    chapters.forEach(function (c) { obs.observe(c); });
+  }
+
+  function num(id, min, fallback) {
+    var el = document.getElementById(id);
+    var v = el ? parseFloat(el.value) : NaN;
+    return isFinite(v) && v >= min ? v : fallback;
+  }
+
+  var diagrams = Array.prototype.slice.call(document.querySelectorAll('figure.diagram'));
+  var narrow = window.matchMedia ? window.matchMedia('(max-width: 960px)') : null;
+  function fitDiagrams() {
+    var small = narrow && narrow.matches;
+    diagrams.forEach(function (fig) {
+      var svg = fig.querySelector('svg'), vb = svg && svg.viewBox && svg.viewBox.baseVal;
+      if (svg) svg.style.minWidth = small && vb && vb.width ? Math.round(vb.width * 0.8) + 'px' : '';
+      fig.classList.toggle('scrolls', fig.scrollWidth > fig.clientWidth + 1);
+    });
+  }
+  fitDiagrams();
+  window.addEventListener('resize', fitDiagrams);
+
+  var capOut = document.getElementById('cap-out');
+  function cap() {
+    if (!capOut) return;
+    var ms = num('cap-ms', 1, 15), inst = num('cap-inst', 1, 1), cams = num('cap-cams', 1, 4), fps = num('cap-fps', 1, 5), reg = num('cap-reg', 1, 2);
+    var capacity = (1000 / ms) * inst;
+    var need = cams * fps * reg;
+    var load = need / capacity * 100;
+    var verdict = load <= 60 ? 'enough margin' : load <= 100 ? 'near the limit' : 'too slow: frames will be skipped';
+    capOut.innerHTML = 'Capacity <b>' + Math.round(capacity) + '</b>/s &middot; Demand <b>' + Math.round(need) + '</b>/s &middot; Load <b>' + Math.round(load) + '%</b> (' + verdict + ')';
+  }
+  ['cap-ms', 'cap-inst', 'cap-cams', 'cap-fps', 'cap-reg'].forEach(function (id) { var el = document.getElementById(id); if (el) el.addEventListener('input', cap); });
+  cap();
+
+  var shmOut = document.getElementById('shm-out');
+  function shm() {
+    if (!shmOut) return;
+    var res = (document.getElementById('shm-res').value || '1280x720').split('x');
+    var w = parseInt(res[0], 10), h = parseInt(res[1], 10);
+    var cams = num('shm-cams', 1, 4);
+    var per = (w * h * 1.5 * 20 + 270480) / 1048576;
+    var total = per * cams + 40;
+    var suggest = Math.ceil(total * 1.25 / 64) * 64;
+    shmOut.innerHTML = 'Per camera <b>' + per.toFixed(2) + '</b> MB &middot; Total <b>' + total.toFixed(1) + '</b> MB &middot; Suggested <code>shm_size: "' + suggest + 'mb"</code>';
+  }
+  ['shm-res', 'shm-cams'].forEach(function (id) { var el = document.getElementById(id); if (el) { el.addEventListener('input', shm); el.addEventListener('change', shm); } });
+  shm();
+})();
+</script>
+</body>
+</html>
